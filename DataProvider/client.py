@@ -1,3 +1,4 @@
+from datetime import datetime
 import requests
 import pandas as pd
 
@@ -5,10 +6,9 @@ from typing import List
 from typing import Dict
 from typing import Union
 
-from datetime import datetime
 from datetime import timedelta
 from datetime import date
-
+import numpy as np
 from dateutil.relativedelta import *
 
 from fake_useragent import UserAgent
@@ -47,9 +47,17 @@ class PriceHistory():
                 from_date = from_date,
                 to_date = to_date
             ) + data
-
+                
         dataframe_prix = pd.DataFrame(data = data)
         dataframe_prix['date'] = pd.to_datetime(dataframe_prix['date'])
+        
+        unique_symbols = dataframe_prix['symbol'].unique()
+        random_ethics = np.random.uniform(0, 1, size=len(unique_symbols))
+        
+        # Mapper les valeurs aléatoires à chaque entreprise
+        ethique_mapping = dict(zip(unique_symbols, random_ethics))
+        dataframe_prix['note_ethique'] = dataframe_prix['symbol'].map(ethique_mapping)
+  
 
         return dataframe_prix
 
@@ -102,5 +110,7 @@ class PriceHistory():
 
                 table_row['low'] = table_row['low'].replace(',', '')
                 table_row['low'] = float(table_row['low'].replace('$', ''))
+                
+                
             
             return historical_data
