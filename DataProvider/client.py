@@ -2,16 +2,10 @@ from datetime import datetime
 import requests
 import pandas as pd
 
-from typing import List
-from typing import Dict
-from typing import Union
-
-from datetime import timedelta
-from datetime import date
 import numpy as np
 from dateutil.relativedelta import *
 
-from fake_useragent import UserAgent
+from tqdm import tqdm
 
 class PriceHistory():
     """ 
@@ -41,7 +35,7 @@ class PriceHistory():
 
         from_date = to_date - relativedelta(years=10)
 
-        for symbol in self._symbols:
+        for symbol in tqdm(self._symbols):
             data = self._grab_prices(
                 symbol = symbol,
                 from_date = from_date,
@@ -85,7 +79,6 @@ class PriceHistory():
 
         if historical_data.ok:
             historical_data = historical_data.json()
-            print(symbol)
             try :
                 historical_data = historical_data['data']['tradesTable']['rows']
             except :
