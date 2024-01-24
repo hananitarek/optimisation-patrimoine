@@ -1,14 +1,74 @@
-import csv
-import random
-from os import path
 import pandas as pd
-
+import yfinance as yf
 import numpy as np
 from tqdm import tqdm
 from precise_asset import BetterAsset
-from asset import Asset
+from pandas_datareader import data as wb
 
 #set a seed for reproducibility
+
+
+def get_Universe(file):
+    stocks = pd.read_csv(file)
+    stocks = stocks[['date', 'symbol', 'close', 'note_ethique']]
+
+    stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
+
+    drop = np.array([0])
+
+    for i in tqdm(range(1, len(stocks)), "Traitement des données"):
+        if stocks['symbol'][i] != stocks['symbol'][i-1]:
+            drop = np.append(drop, i)
+
+
+    stocks.drop(index = drop, inplace = True)
+
+    
+
+    dailyReturns = stocks.copy().loc[:,['date','symbol','return']]
+    dailyReturns = stocks.pivot(index='date', columns='symbol', values='return')
+    stock_name = dailyReturns.columns.values
+    dailyReturns = dailyReturns[stock_name].copy()
+
+    ethicGrades = stocks.copy().loc[:,['date', 'symbol','note_ethique']]
+    ethicGrades = ethicGrades.pivot(index='date', columns='symbol', values='note_ethique')
+    ethicGrades = ethicGrades[stock_name].copy()
+    
+    return dailyReturns, ethicGrades, stock_name
+
+def get_index(symbol):
+    yf.pdr_override()
+    data_index = pd.DataFrame()
+    data_index = wb.get_data_yahoo(symbol,start='2013-04-16', end='2023-04-13', interval='1d')
+    data_index['return'] = np.log(data_index['Close']) - np.log(data_index['Close'].shift())
+    return data_index
+
+
+def get_newdata(stocks, symbols, data_index):
+    data = stocks.copy()
+
+    # supprimer les colonnes des indices qui ont trop de valeurs manquantes
+    data.dropna(axis=1, thresh=0.8*len(data), inplace=True)
+
+
+    # si le symbole est déjà connu, on retire la colonne correspondante
+    for sym in tqdm(symbols, "Checking for duplicates"):
+        if sym in data.columns:
+            data.drop(sym, axis=1, inplace=True)
+        data[sym] = data_index['return'].copy()
+
+
+    data.dropna(inplace=True) # drop lines with NaN values
+
+    print(data)
+
+    return data
+
+
+def get_sets(data, stock_name, symbol):
+    X = data[stock_name].values
+    returns = data[symbol].values
+    return X, returns
 
 
 
@@ -19,9 +79,9 @@ def loadUniverse(file):
     stock_symbol = stocks.symbol.unique()
     
 
-    stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
+    stocks['return'] =  np.log(stocks['close']) - np.log(stocks['close'].shift())
 
-    stocks.dropna(inplace=True)
+    # stocks.dropna(inplace=True)
 
     prices = stocks.copy().loc[:,['date','symbol','close']]
     prices = prices.pivot(index='date', columns='symbol', values='close')

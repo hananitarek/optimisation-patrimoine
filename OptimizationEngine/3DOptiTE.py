@@ -21,84 +21,82 @@ from pandas_datareader import data as wb
 def main():
     FICHIER = 'stock_data.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
-    outData, dailyReturns, prices, stock_symbol = loadData.loadUniverse(chemin_complet)
-
-    yf.pdr_override()
-    sp500 = pd.DataFrame()
-    sp500 = wb.get_data_yahoo('^GSPC',start='2014-01-23', end='2024-01-20', interval='1d')
+    dailyReturns, ethicGrades, stock_name = loadData.get_Universe(chemin_complet)
+    data_index_tracked = loadData.get_index(['^GSPC'])
+    data = loadData.get_newdata(dailyReturns, ['^GSPC'], data_index_tracked)
     
-    sp500['return'] = np.log(sp500['Close']) - np.log(sp500['Close'].shift())
-    # eject all column missing too much returns
-    dailyReturns = dailyReturns.dropna(axis=1, thresh= 0.9 * len(dailyReturns))
+    stock_name = data.columns.values
+
+    X, returns = loadData.get_sets(data, stock_name, '^GSPC')
+    cov = np.cov(X, rowvar=False)
+    cov = cov_nearest(cov, method="nearest", threshold= 1e-15)
     
-    outData = [asset for asset in outData if asset.symbol in dailyReturns.columns]
-
-
-    #eject all rows having nan
-    dailyReturns = dailyReturns.dropna(axis=0, how='any')
-    # we need to have the same date for sp500 and dailyReturns
-    sp500 = sp500.loc[dailyReturns.index]
-    # eject all column missing too much returns
-    
-
-
-
-
-    # add the sp500 to the dataframe
-    dailyReturns['^GSPC'] = sp500['return'].copy()
 
     weeklyYields = dailyReturns.mean()
 
-    numAssets = len(dailyReturns.columns)
-    weights = cp.Variable(numAssets)
-    
+    numAssets = np.shape(X)[1]
 
-
-    ethic = np.array([asset.ethicGrade for asset in outData])
-    crisis = np.array([asset.crisisYield for asset in outData])
-
-    # add 0 to ethic and crisis
-    ethic = np.append(ethic, 0)
-    crisis = np.append(crisis, 0)
-
-    df = pd.DataFrame(dailyReturns)
-    covariance_matrix = df.cov()
-    covariance_matrix = cov_nearest(covariance_matrix, method='clipped', threshold=0.000001)
-
+    x = cp.Variable(numAssets)
     C = np.zeros(numAssets)
     C[-1] = 1
 
+    # outData = [asset for asset in outData if asset.symbol in dailyReturns.columns]
+
+    # ethic = np.array([asset.ethicGrade for asset in outData])
+    # crisis = np.array([asset.crisisYield for asset in outData])
+
+    # # add 0 to ethic and crisis
+    # ethic = np.append(ethic, 0)
+    # crisis = np.append(crisis, 0)
+
+
     # Create constraints.
-    constraints = [cp.sum(weights) == 1, 0 <= weights, weights <= 1]
-    constraints += [
-        # weights @ weeklyYields >= 0.000,
-        # weights @ ethic >= 0.0,
-        weights[-1] == 0
+    constraints = [
+        cp.sum(x) == 1,
+        0 <= x,
+        x <= 1,
     ]
-    objective = cp.Minimize(cp.quad_form(weights - C, covariance_matrix ))
+    indexConstraints = [
+        # x @ weeklyYields >= 0.000,
+        # x @ ethic >= 0.0,
+        x[-1] == 0
+    ]
+    constraints = constraints + indexConstraints
+    objective = cp.Minimize(cp.quad_form(x - C, cov))
     prob = cp.Problem(objective, constraints) 
-    prob.solve(solver='SCS', verbose = False)
+    prob.solve(solver="SCS", verbose = False)
     
-    # display expected return
-    print("weights.value @ weeklyYields :", weights.value @ weeklyYields)
-    #display risk
-    print(cp.quad_form(weights, covariance_matrix).value)
-    # display ethic grade
-    print(weights.value @ ethic)
-    # display 10 best assets
-    print(weights.value.argsort()[-10:][::-1])
-    # display names of 10 best assets
-    print([outData[i].symbol for i in weights.value.argsort()[-10:][::-1]])
+    # # display expected return
+    # print("weights.value @ weeklyYields :", weights.value @ weeklyYields)
+    # #display risk
+    # print(cp.quad_form(weights, covariance_matrix).value)
+    # # display ethic grade
+    # print(weights.value @ ethic)
+    # # display 10 best assets
+    # print(weights.value.argsort()[-10:][::-1])
+    # # display names of 10 best assets
+    # print([outData[i].symbol for i in weights.value.argsort()[-10:][::-1]])
+    T_train = np.shape(X)[0]
+    tracking_error = cp.sqrt((1/T_train)*
+                cp.sum(
+                    cp.square(
+                        x - C
+                    )
+                ) 
+            )
+    print('Tracking error: ', tracking_error.value)
 
-    # display weights
-    print(weights.value)
+    returns_index = returns
+    returns_x = X @ x.value
 
-    portfolio_returns = normalizing(dailyReturns.values @ weights.value)
-    sp500_returns = normalizing(dailyReturns.values @ C)
-    brami.plot(portfolio_returns, label='Portfolio')
-    brami.plot(sp500_returns, label='S&P500')
+    returns_index = normalizing(returns_index)
+    returns_x = normalizing(returns_x)
+
+    brami.plot(returns_index, label='index')
+    brami.plot(returns_x, label='x')
     brami.legend()
     brami.show()
+
 
 def computeAverageYields(data, duration):
     res = []
