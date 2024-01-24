@@ -20,11 +20,6 @@ def loadUniverse(file):
     
 
     stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
-    drop = np.array([0])
-
-    # for i in tqdm(range(1, stocks.shape[0]), "Traitement des données"):
-    #     if stocks['symbol'][i] != stocks['symbol'][i-1]:
-    #         drop = np.append(drop, i)
 
     stocks.dropna(inplace=True)
 
