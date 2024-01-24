@@ -21,7 +21,7 @@ def main():
     outData, dailyReturns, prices, stock_symbol = loadData.loadUniverse(chemin_complet)
 
     outData = [asset for asset in outData if asset.numPrices > 3 * 356]  # we want at least 3 years of data
-
+    
 
     weeklyYields = prices.pct_change().dropna().mean()
 
@@ -37,14 +37,19 @@ def main():
 
 
     # Create constraints.
-    constraints = [cp.sum(weights) == 1, weights >= 0]
+    constraints = [cp.sum(weights) == 1, 0 <= weights]
     constraints += [
-        weights @ ethic >= 0.3,
+        weights @ ethic >= 0.9,
         cp.quad_form(weights, covariance_matrix) <= 1
     ]
     objective = cp.Maximize(weights @ weeklyYields)
     prob = cp.Problem(objective, constraints) 
-    result = prob.solve(solver='SCS', verbose = True)
+    result = prob.solve(solver='SCS', verbose = False)
+    
+    print("The optimal weights are: ", weights.value * 100 )
+    print("The portfolio yield is: ", result * 100)
+    print("The portfolio risk is: ", cp.quad_form(weights, covariance_matrix).value * 100)
+    print("The portfolio ethic grade is: ", weights.value @ ethic)
 
 
 def computeAverageYields(data, duration):

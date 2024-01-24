@@ -20,4 +20,4 @@ class BetterAsset:
 
 
     def __repr__(self):
-        return f"Asset: {self.symbol} - Ethic Grade: {self.ethicGrade} - Crisis Yield: {self.crisisYield}- Open: {self.open} - High: {self.high} - Low: {self.low} - Close: {self.close} - Volume: {self.volume}"
+        return f"Asset: {self.symbol} "
