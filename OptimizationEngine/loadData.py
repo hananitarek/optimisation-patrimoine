@@ -22,11 +22,11 @@ def loadUniverse(file):
     stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
     drop = np.array([0])
 
-    for i in tqdm(range(1, stocks.shape[0]), "Traitement des données"):
-        if stocks['symbol'][i] != stocks['symbol'][i-1]:
-            drop = np.append(drop, i)
+    # for i in tqdm(range(1, stocks.shape[0]), "Traitement des données"):
+    #     if stocks['symbol'][i] != stocks['symbol'][i-1]:
+    #         drop = np.append(drop, i)
 
-    stocks.drop(index = drop, inplace=True)
+    stocks.dropna(inplace=True)
 
     prices = stocks.copy().loc[:,['date','symbol','close']]
     prices = prices.pivot(index='date', columns='symbol', values='close')
@@ -35,8 +35,6 @@ def loadUniverse(file):
     dailyReturns = stocks.copy().loc[:,['date','symbol','return']]
     dailyReturns = dailyReturns.pivot(index='date', columns='symbol', values='return')
     dailyReturns = dailyReturns[stock_symbol].copy()
-
-
 
     opens = stocks.copy().loc[:,['date','symbol','open']]
     opens = opens.pivot(index='date', columns='symbol', values='open')
@@ -50,17 +48,12 @@ def loadUniverse(file):
     lows = lows.pivot(index='date', columns='symbol', values='low')
     lows = lows[stock_symbol].copy()
 
-    closes = stocks.copy().loc[:,['date','symbol','close']]
-    closes = closes.pivot(index='date', columns='symbol', values='close')
-    closes = closes[stock_symbol].copy()
-
     volumes = stocks.copy().loc[:,['date','symbol','volume']]
     volumes = volumes.pivot(index='date', columns='symbol', values='volume')
     volumes = volumes[stock_symbol].copy()
 
     ethicGrades = stocks.copy().loc[:,['date', 'symbol','note_ethique']]
     ethicGrades = ethicGrades.pivot(index='date', columns='symbol', values='note_ethique')
-    ethicGrades = ethicGrades[stock_symbol].copy()
     
     outData = []
     for i in range(len(stock_symbol)):
@@ -68,9 +61,9 @@ def loadUniverse(file):
         curAsset.symbol = stock_symbol[i]
         curAsset.open = opens.iloc[:,i].values
         curAsset.low = lows.iloc[:,i].values
-        curAsset.DailyPrices = closes.iloc[:,i].values
-
-        curAsset.ethicGrade = ethicGrades.iloc[:,i].values[0]
+        curAsset.DailyPrices = prices.iloc[:,i].values
+        
+        curAsset.ethicGrade = np.nanmax(ethicGrades.iloc[:,i].values)
 
         maximumOpens = max(curAsset.open)
         minimumLows = min(curAsset.low)

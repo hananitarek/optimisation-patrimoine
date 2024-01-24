@@ -21,6 +21,7 @@ def main():
     outData, dailyReturns, prices, stock_symbol = loadData.loadUniverse(chemin_complet)
 
     outData = [asset for asset in outData if asset.numPrices > 3 * 356]  # we want at least 3 years of data
+    
 
     weeklyYields = prices.pct_change().dropna().mean()
 
