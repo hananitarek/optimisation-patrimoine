@@ -12,12 +12,11 @@ class BetterAsset:
         self.symbol = "None"
         
         self.open = []
-        self.high = []
         self.low = []
-        self.close = []
-        self.volume = []
+        self.DailyPrices = []
         self.crisisYield = 0.0 
         self.ethicGrade = 0.0 # chosen by the user (randomly)
+        self.numPrices = 0
 
 
     def __repr__(self):

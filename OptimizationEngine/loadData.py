@@ -14,8 +14,6 @@ from asset import Asset
 
 def loadUniverse(file):
     stocks = pd.read_csv(file)
-    print(stocks)
-
     # stock_symbol = stocks[stocks.date == '2013-02-08'].symbol.values
     # get the list of stock symbols
     stock_symbol = stocks.symbol.unique()
@@ -34,9 +32,11 @@ def loadUniverse(file):
     prices = prices.pivot(index='date', columns='symbol', values='close')
     prices = prices[stock_symbol].copy()
 
-    returns = stocks.copy().loc[:,['date','symbol','return']]
-    returns = returns.pivot(index='date', columns='symbol', values='return')
-    returns = returns[stock_symbol].copy()
+    dailyReturns = stocks.copy().loc[:,['date','symbol','return']]
+    dailyReturns = dailyReturns.pivot(index='date', columns='symbol', values='return')
+    dailyReturns = dailyReturns[stock_symbol].copy()
+
+
 
     opens = stocks.copy().loc[:,['date','symbol','open']]
     opens = opens.pivot(index='date', columns='symbol', values='open')
@@ -59,19 +59,16 @@ def loadUniverse(file):
     volumes = volumes[stock_symbol].copy()
 
     ethicGrades = stocks.copy().loc[:,['date', 'symbol','note_ethique']]
-
     ethicGrades = ethicGrades.pivot(index='date', columns='symbol', values='note_ethique')
     ethicGrades = ethicGrades[stock_symbol].copy()
-
+    
     outData = []
     for i in range(len(stock_symbol)):
         curAsset = BetterAsset()
         curAsset.symbol = stock_symbol[i]
         curAsset.open = opens.iloc[:,i].values
-        curAsset.high = highs.iloc[:,i].values
         curAsset.low = lows.iloc[:,i].values
-        curAsset.close = closes.iloc[:,i].values
-        curAsset.volume = volumes.iloc[:,i].values
+        curAsset.DailyPrices = closes.iloc[:,i].values
 
         curAsset.ethicGrade = ethicGrades.iloc[:,i].values[0]
 
@@ -81,8 +78,15 @@ def loadUniverse(file):
 
         curAsset.crisisYield = (minimumLows - maximumOpens) / firstOpen
 
+        # count the number of prices non nan
+        curAsset.numPrices = 0
+        for price in curAsset.DailyPrices:
+            if price != "nan":
+                curAsset.numPrices += 1
+
+
         outData.append(curAsset)
 
     
-    return outData, returns, prices, stock_symbol
+    return outData, dailyReturns, prices, stock_symbol
 
