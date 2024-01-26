@@ -18,16 +18,16 @@ from pandas_datareader import data as wb
 
 
 
-def main():
+def solver(symbol = '^GSPC'):
     FICHIER = 'stock_data.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
     dailyReturns, ethicGrades, stock_name = loadData.get_Universe(chemin_complet)
-    data_index_tracked = loadData.get_index(['^GSPC'])
-    data = loadData.get_newdata(dailyReturns, ['^GSPC'], data_index_tracked)
+    data_index_tracked = loadData.get_index([symbol])
+    data = loadData.get_newdata(dailyReturns, [symbol], data_index_tracked)
     
     stock_name = data.columns.values
 
-    X, returns = loadData.get_sets(data, stock_name, '^GSPC')
+    X, returns = loadData.get_sets(data, stock_name, symbol)
     cov = np.cov(X, rowvar=False)
     cov = cov_nearest(cov, method="nearest", threshold= 1e-15)
     
@@ -92,10 +92,18 @@ def main():
     returns_index = normalizing(returns_index)
     returns_x = normalizing(returns_x)
 
-    brami.plot(returns_index, label='index')
-    brami.plot(returns_x, label='x')
-    brami.legend()
-    brami.show()
+    # extract all dates 
+    # create a dataframe containing the returns of the index and the returns of the portfolio
+    df = pd.DataFrame({'index': returns_index, 'portfolio': returns_x, 'date': data.index})
+    # df.set_index('date', inplace=True)
+    # # plot 
+    # brami.plot(returns_index, color='red')
+    # brami.plot(returns_x, color='blue')
+    # brami.legend(['index_tracked', 'portfolio'])
+
+    # brami.show()
+
+    return df, tracking_error.value
 
 
 def computeAverageYields(data, duration):
@@ -138,11 +146,11 @@ def computeAndCorrectCov(yields):
     return covariance_matrix + toadd * np.eye(numAssets)
 
 def normalizing(returns):
-    normalized = np.array([1])
-    for i in returns:
+    normalized = np.array([np.exp(returns[0])])
+    for i in returns[1 :]:
         normalized = np.append(normalized, normalized[-1] * np.exp(i))
     return normalized
 
 
 if __name__ == "__main__":
-    main()
+    solver()

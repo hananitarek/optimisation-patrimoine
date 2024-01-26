@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from precise_asset import BetterAsset
 from pandas_datareader import data as wb
-
+import streamlit as st
 #set a seed for reproducibility
 
 
@@ -15,15 +15,13 @@ def get_Universe(file):
     stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
 
     drop = np.array([0])
-
+    progress_bar = st.sidebar.progress(0, text="Traitement des données")
     for i in tqdm(range(1, len(stocks)), "Traitement des données"):
         if stocks['symbol'][i] != stocks['symbol'][i-1]:
+            progress_bar.progress(int(i / len(stocks) * 100), text="Traitement des données")
             drop = np.append(drop, i)
-
-
+    progress_bar.empty()
     stocks.drop(index = drop, inplace = True)
-
-    
 
     dailyReturns = stocks.copy().loc[:,['date','symbol','return']]
     dailyReturns = stocks.pivot(index='date', columns='symbol', values='return')
@@ -60,7 +58,6 @@ def get_newdata(stocks, symbols, data_index):
 
     data.dropna(inplace=True) # drop lines with NaN values
 
-    print(data)
 
     return data
 
