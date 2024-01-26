@@ -12,7 +12,8 @@ def get_Universe(file):
     stocks = pd.read_csv(file)
     stocks = stocks[['date', 'symbol', 'close', 'note_ethique']]
 
-    stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
+    # stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
+    stocks['return'] = stocks['close'].pct_change()
 
     drop = np.array([0])
     progress_bar = st.sidebar.progress(0, text="Traitement des données")
@@ -38,7 +39,8 @@ def get_index(symbol):
     yf.pdr_override()
     data_index = pd.DataFrame()
     data_index = wb.get_data_yahoo(symbol,start='2013-04-16', end='2023-04-13', interval='1d')
-    data_index['return'] = np.log(data_index['Close']) - np.log(data_index['Close'].shift())
+    # data_index['return'] = np.log(data_index['Close']) - np.log(data_index['Close'].shift())
+    data_index['return'] = data_index['Close'].pct_change()
     return data_index
 
 

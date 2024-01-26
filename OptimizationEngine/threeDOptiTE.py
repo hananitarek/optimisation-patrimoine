@@ -4,21 +4,17 @@ import math
 import cvxpy as cp
 import numpy as np
 import pandas as pd 
-import matplotlib.pyplot as brami #pipelette as brami
-from skimage.measure import block_reduce
+import matplotlib.pyplot as plt 
 from scipy.linalg import cholesky
-import yfinance as yf
+
 
 from statsmodels.stats.correlation_tools import cov_nearest
 
-
 import loadData
-import seaborn as sns
-from pandas_datareader import data as wb
 
 
 
-def solver(symbol = '^GSPC'):
+def solver(symbol = 'NVDA'):
     FICHIER = 'stock_data.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
     dailyReturns, ethicGrades, stock_name = loadData.get_Universe(chemin_complet)
@@ -32,7 +28,9 @@ def solver(symbol = '^GSPC'):
     cov = cov_nearest(cov, method="nearest", threshold= 1e-15)
     
 
-    weeklyYields = dailyReturns.mean()
+    weeklyYields = data.mean()
+    print(weeklyYields)
+    print(returns.mean())
 
     numAssets = np.shape(X)[1]
 
@@ -67,24 +65,26 @@ def solver(symbol = '^GSPC'):
     prob.solve(solver="SCS", verbose = False)
     
     # # display expected return
-    # print("weights.value @ weeklyYields :", weights.value @ weeklyYields)
+    # print("weights.value @ weeklyYields :", x.value @ weeklyYields)
     # #display risk
-    # print(cp.quad_form(weights, covariance_matrix).value)
+    # print(cp.quad_form(x, covariance_matrix).value)
     # # display ethic grade
-    # print(weights.value @ ethic)
+    # print(x.value @ ethic)
     # # display 10 best assets
-    # print(weights.value.argsort()[-10:][::-1])
+    # print(x.value.argsort()[-10:][::-1])
     # # display names of 10 best assets
-    # print([outData[i].symbol for i in weights.value.argsort()[-10:][::-1]])
-    T_train = np.shape(X)[0]
-    tracking_error = cp.sqrt((1/T_train)*
-                cp.sum(
-                    cp.square(
-                        x - C
-                    )
-                ) 
-            )
-    print('Tracking error: ', tracking_error.value)
+    # print([outData[i].symbol for i in x.value.argsort()[-10:][::-1]])
+    
+    # rendement moyen du portefeuille
+    portfolio_return = x.value @ weeklyYields
+    # rendement moyen de l'indice
+    index_return = returns.mean()
+    # tracking error
+    tracking_error = portfolio_return - index_return
+
+    print('Portfolio return: ', portfolio_return * 100)
+    print('Index return: ', index_return * 100)
+    print('Tracking error: ', tracking_error * 100)
 
     returns_index = returns
     returns_x = X @ x.value
@@ -97,13 +97,21 @@ def solver(symbol = '^GSPC'):
     df = pd.DataFrame({'index': returns_index, 'portfolio': returns_x, 'date': data.index})
     # df.set_index('date', inplace=True)
     # # plot 
-    # brami.plot(returns_index, color='red')
-    # brami.plot(returns_x, color='blue')
-    # brami.legend(['index_tracked', 'portfolio'])
+    # plt.plot(returns_index, color='red')
+    # plt.plot(returns_x, color='blue')
+    # plt.legend(['index_tracked', 'portfolio'])
 
-    # brami.show()
+    # plt.show()
 
-    return df, tracking_error.value
+    # create a dictionary containing the weights of 10 assets with the highest weights and sixth asset is the sum of the others
+    weights = {}
+    for i in x.value.argsort()[-10:][::-1]:
+        weights[stock_name[i]] = x.value[i]
+    weights['others'] = 1 - sum(weights.values())
+
+
+
+    return df, tracking_error, weights
 
 
 def computeAverageYields(data, duration):
@@ -146,11 +154,14 @@ def computeAndCorrectCov(yields):
     return covariance_matrix + toadd * np.eye(numAssets)
 
 def normalizing(returns):
-    normalized = np.array([np.exp(returns[0])])
+    normalized = np.array([0])
     for i in returns[1 :]:
-        normalized = np.append(normalized, normalized[-1] * np.exp(i))
+        normalized = np.append(normalized, normalized[-1] + i)
     return normalized
 
+def min_max_normalization(returns):
+    normalized = (returns - returns.mean()) / (returns.max() - returns.min())
+    return normalized
 
 if __name__ == "__main__":
     solver()

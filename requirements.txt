@@ -1,0 +1,11 @@
+pandas
+numpy
+cvxpy
+matplotlib
+seaborn
+streamlit
+tqdm
+pandas_datareader
+scipy
+yfinance
+statsmodels
