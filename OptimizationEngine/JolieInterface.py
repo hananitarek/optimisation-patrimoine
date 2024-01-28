@@ -7,6 +7,7 @@ import streamlit as st
 import threeDOptiTE as opti
 import matplotlib.pyplot as plt
 
+st.set_page_config(layout="wide")
 st.title("""*Optimisation de patrimoine*""")
 st.header("version 1.0 : gestion indicielle avec Markowitz")
 
@@ -15,6 +16,7 @@ on = st.toggle('Approche génétique', value=False)
 def clear_text():
     st.session_state.index_to_track = st.session_state.index_widget
     st.session_state.index_widget = ""
+ 
 
 def asking_index_to_track():
     st.text_input(label="Quel indice souhaitez-vous suivre ? (ex : S&P500, CAC40, ...)", value="", key='index_widget' , on_change=clear_text)
@@ -28,25 +30,13 @@ def asking_index_to_track():
 def asking_esg_max():
     st.slider(label="Quel est le score ESG maximum que vous souhaitez avoir ?", min_value=7.24, max_value=100.0, value=7.24, step=0.5, key='esg_widget')
     esg_max = st.session_state.get('esg_widget', "")
-    if esg_max == 0:
-        st.stop()
-    try:
-        esg_max = float(esg_max)
-    except:
-        st.stop()
     
     return esg_max
 
 def asking_yield_min(min_yield, max_yield):
     st.slider(label="Quel est le rendement minimum que vous souhaitez avoir ?", min_value=min_yield, max_value=max_yield, value=0.0, step=0.01, key='yield_widget')
     yield_min = st.session_state.get('yield_widget', "")
-    if yield_min == 0:
-        st.stop()
-    try:
-        yield_min = float(yield_min)
-    except:
-        st.stop()
-    
+
     return yield_min
 
 
@@ -77,13 +67,13 @@ else:
     df, performance, weights = opti.solver(index_to_track, esg_max, min_yield_threshold)
 
     progress_bar = st.sidebar.progress(0, text="Optimisation en cours...")
-    chart = st.line_chart(df, x='date', y=['index', 'portfolio'], height=500, width=1000)
+    chart = st.line_chart(df, x='date', y=['index', 'portfolio'], height=500, width=2000)
     
     for i in range(1, len(df['index'])):
         if i % 10 == 0:
             progress_bar.progress(int(i / len(df['index']) * 100), text="Optimisation en cours...")
             new_row_df = df.iloc[:i]
-            chart.line_chart(new_row_df, x='date', y=['index', 'portfolio'], height=500, width=1000)
+            chart.line_chart(new_row_df, x='date', y=['index', 'portfolio'], height=500, width=2000)
     
     progress_bar.empty()
 

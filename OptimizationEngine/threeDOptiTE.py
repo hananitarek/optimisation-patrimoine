@@ -72,8 +72,8 @@ def solver(symbol = 'MC.PA', esg_max = 100, min_yield_threshold = -32):
         x <= 1,
     ]
     indexConstraints = [
-        x @ yields >= min_yield_threshold,
-        x @ ethic <= esg_max,
+        # x @ yields >= min_yield_threshold,
+        # x @ ethic <= esg_max,
         x[-1] == 0
     ]
     constraints = constraints + indexConstraints
@@ -101,6 +101,8 @@ def solver(symbol = 'MC.PA', esg_max = 100, min_yield_threshold = -32):
     dailyprices_index = dailyprices.values @ C
     dailyprices_x = dailyprices.values @ x.value
 
+    dailyprices_index = min_max_normalization(dailyprices_index)
+    dailyprices_x = min_max_normalization(dailyprices_x)
 
     # returns_index = normalizing(returns_index)
     # returns_x = normalizing(returns_x)
