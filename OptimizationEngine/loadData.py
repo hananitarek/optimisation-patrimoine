@@ -5,15 +5,17 @@ from tqdm import tqdm
 from precise_asset import BetterAsset
 from pandas_datareader import data as wb
 import streamlit as st
-#set a seed for reproducibility
 
 
-def get_Universe(file):
+def get_Universe(file, esg_file):
     stocks = pd.read_csv(file)
-    stocks = stocks[['date', 'symbol', 'close', 'note_ethique']]
+    esg = pd.read_csv(esg_file)
 
-    # stocks['return'] = np.log(stocks['close']) - np.log(stocks['close'].shift())
-    stocks['return'] = stocks['close'].pct_change()
+    stocks = stocks[['date', 'symbol', 'Close']]
+    esg = esg[['symbol', 'esg_score']]
+
+    # stocks['return'] = stocks['Close'].pct_change()
+    stocks['return'] = np.log(stocks['Close'].pct_change() + 1)
 
     drop = np.array([0])
     progress_bar = st.sidebar.progress(0, text="Traitement des données")
@@ -29,111 +31,66 @@ def get_Universe(file):
     stock_name = dailyReturns.columns.values
     dailyReturns = dailyReturns[stock_name].copy()
 
-    ethicGrades = stocks.copy().loc[:,['date', 'symbol','note_ethique']]
-    ethicGrades = ethicGrades.pivot(index='date', columns='symbol', values='note_ethique')
-    ethicGrades = ethicGrades[stock_name].copy()
+    ethicGrades = esg.copy().loc[:,['symbol','esg_score']]
+
+    DailyPrices = stocks.copy().loc[:,['date','symbol','Close']]
+    DailyPrices = stocks.pivot(index='date', columns='symbol', values='Close')
+    DailyPrices = DailyPrices[stock_name].copy()
     
-    return dailyReturns, ethicGrades, stock_name
+    return dailyReturns, ethicGrades, DailyPrices, stock_name
 
 def get_index(symbol):
     yf.pdr_override()
     data_index = pd.DataFrame()
     data_index = wb.get_data_yahoo(symbol,start='2013-04-16', end='2023-04-13', interval='1d')
     # data_index['return'] = np.log(data_index['Close']) - np.log(data_index['Close'].shift())
-    data_index['return'] = data_index['Close'].pct_change()
+    # data_index['return'] = data_index['Close'].pct_change()
+    data_index['return'] = np.log(data_index['Close'].pct_change() + 1)
     return data_index
 
 
-def get_newdata(stocks, symbols, data_index):
+def get_newdata(stocks, esg_data, dailyprices, symbols, data_index):
     data = stocks.copy()
+    esg_d = esg_data.copy()
+    dailyprices_d = dailyprices.copy()
 
     # supprimer les colonnes des indices qui ont trop de valeurs manquantes
     data.dropna(axis=1, thresh=0.8*len(data), inplace=True)
+    # supprimer les lignes de esg_data qui ne sont pas dans data
+    esg_d = esg_d[esg_d['symbol'].isin(data.columns)]
+    # supprimer les colonnes de dailyprices qui ne sont pas dans data
+    dailyprices_d = dailyprices_d[data.columns]
+
 
 
     # si le symbole est déjà connu, on retire la colonne correspondante
     for sym in tqdm(symbols, "Checking for duplicates"):
         if sym in data.columns:
             data.drop(sym, axis=1, inplace=True)
+            # drop the corresponding esg score
+            esg_d = esg_d[esg_d['symbol'] != sym]
+            # drop the corresponding dailyprices
+            dailyprices_d.drop(sym, axis=1, inplace=True)
+            
         data[sym] = data_index['return'].copy()
+        dailyprices_d[sym] = data_index['Close'].copy()
+
+    
 
 
     data.dropna(inplace=True) # drop lines with NaN values
+    dailyprices_d.dropna(inplace=True) # drop lines with NaN values
+    
+    # sort the companies by their name
+    esg_d = esg_d.sort_values(by=['symbol'])
+    esg_d.reset_index(inplace=True, drop=True)
 
 
-    return data
+    return data, dailyprices_d, esg_d
 
 
-def get_sets(data, stock_name, symbol):
+def get_sets(data, stock_name, symbols):
     X = data[stock_name].values
-    returns = data[symbol].values
+    returns = data[symbols].values
     return X, returns
-
-
-
-def loadUniverse(file):
-    stocks = pd.read_csv(file)
-    # stock_symbol = stocks[stocks.date == '2013-02-08'].symbol.values
-    # get the list of stock symbols
-    stock_symbol = stocks.symbol.unique()
-    
-
-    stocks['return'] =  np.log(stocks['close']) - np.log(stocks['close'].shift())
-
-    # stocks.dropna(inplace=True)
-
-    prices = stocks.copy().loc[:,['date','symbol','close']]
-    prices = prices.pivot(index='date', columns='symbol', values='close')
-    prices = prices[stock_symbol].copy()
-
-    dailyReturns = stocks.copy().loc[:,['date','symbol','return']]
-    dailyReturns = dailyReturns.pivot(index='date', columns='symbol', values='return')
-    dailyReturns = dailyReturns[stock_symbol].copy()
-
-    opens = stocks.copy().loc[:,['date','symbol','open']]
-    opens = opens.pivot(index='date', columns='symbol', values='open')
-    opens = opens[stock_symbol].copy()
-
-    highs = stocks.copy().loc[:,['date','symbol','high']]
-    highs = highs.pivot(index='date', columns='symbol', values='high')
-    highs = highs[stock_symbol].copy()
-
-    lows = stocks.copy().loc[:,['date','symbol','low']]
-    lows = lows.pivot(index='date', columns='symbol', values='low')
-    lows = lows[stock_symbol].copy()
-
-    volumes = stocks.copy().loc[:,['date','symbol','volume']]
-    volumes = volumes.pivot(index='date', columns='symbol', values='volume')
-    volumes = volumes[stock_symbol].copy()
-
-    ethicGrades = stocks.copy().loc[:,['date', 'symbol','note_ethique']]
-    ethicGrades = ethicGrades.pivot(index='date', columns='symbol', values='note_ethique')
-    
-    outData = []
-    for i in range(len(stock_symbol)):
-        curAsset = BetterAsset()
-        curAsset.symbol = stock_symbol[i]
-        curAsset.open = opens.iloc[:,i].values
-        curAsset.low = lows.iloc[:,i].values
-        curAsset.DailyPrices = prices.iloc[:,i].values
-        
-        curAsset.ethicGrade = np.nanmax(ethicGrades.iloc[:,i].values)
-
-        maximumOpens = max(curAsset.open)
-        minimumLows = min(curAsset.low)
-        firstOpen = curAsset.open[0]
-
-        curAsset.crisisYield = (minimumLows - maximumOpens) / firstOpen
-
-        # count the number of prices non nan
-        curAsset.numPrices = 0
-        for price in curAsset.DailyPrices:
-            if price != "nan":
-                curAsset.numPrices += 1
-
-
-        outData.append(curAsset)
-
-    
-    return outData, dailyReturns, prices, stock_symbol
 

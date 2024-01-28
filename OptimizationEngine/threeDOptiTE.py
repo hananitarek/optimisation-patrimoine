@@ -13,24 +13,42 @@ from statsmodels.stats.correlation_tools import cov_nearest
 import loadData
 
 
-
-def solver(symbol = 'NVDA'):
-    FICHIER = 'stock_data.csv'
+def solver(symbol = 'MC.PA', esg_max = 100, min_yield_threshold = -32):
+    FICHIER = 'stock_data_french.csv'
+    ESG_FILE = 'stock_data_french_esg.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
-    dailyReturns, ethicGrades, stock_name = loadData.get_Universe(chemin_complet)
+    chemin_complete_esg = os.path.join('DataProvider', ESG_FILE)
+
+    dailyReturns, ethicGrades, DailyPrices, stock_name = loadData.get_Universe(chemin_complet, chemin_complete_esg)
+    
     data_index_tracked = loadData.get_index([symbol])
-    data = loadData.get_newdata(dailyReturns, [symbol], data_index_tracked)
+    data, dailyprices, esg_data = loadData.get_newdata(dailyReturns, ethicGrades, DailyPrices, [symbol], data_index_tracked)
+
+    ethic = esg_data['esg_score'].values
+    # add 0 to the end of the array
+    ethic = np.append(ethic, 0)
     
     stock_name = data.columns.values
 
-    X, returns = loadData.get_sets(data, stock_name, symbol)
+    X, returns = loadData.get_sets(data, stock_name, [symbol])
     cov = np.cov(X, rowvar=False)
     cov = cov_nearest(cov, method="nearest", threshold= 1e-15)
     
 
-    weeklyYields = data.mean()
-    print(weeklyYields)
-    print(returns.mean())
+    # calculate the yield over the period of time : need to take into account the last prices and the first prices of the dataframe
+    yields = pd.DataFrame()
+    for symbol in dailyprices.columns.values:
+        current_row = pd.DataFrame()
+        current_row['symbol'] = [symbol]
+        current_row['yield'] = (dailyprices[symbol].iloc[-1] - dailyprices[symbol].iloc[0]) / dailyprices[symbol].iloc[0]
+        yields = pd.concat([yields, current_row], ignore_index=True)
+
+    # last yield is the yield of the index
+    yield_index = yields['yield'].iloc[-1]
+
+    yields = yields['yield'].values
+
+    # print the max esg score and the min esg score of the universe
 
     numAssets = np.shape(X)[1]
 
@@ -38,15 +56,14 @@ def solver(symbol = 'NVDA'):
     C = np.zeros(numAssets)
     C[-1] = 1
 
-    # outData = [asset for asset in outData if asset.symbol in dailyReturns.columns]
-
-    # ethic = np.array([asset.ethicGrade for asset in outData])
-    # crisis = np.array([asset.crisisYield for asset in outData])
-
-    # # add 0 to ethic and crisis
-    # ethic = np.append(ethic, 0)
-    # crisis = np.append(crisis, 0)
-
+    # compute the inverse of the covariance matrix
+    inv_cov = np.linalg.inv(cov)
+    ones = np.ones(numAssets)
+    theorical_threshold = esg_max * (ones @ inv_cov @ ones) / (ethic @ inv_cov @ ethic)
+    a = esg_max * (ones @ inv_cov @ ethic) / (ethic @ inv_cov @ ethic)
+    print(a)
+    print(theorical_threshold)
+    print(theorical_threshold - a)
 
     # Create constraints.
     constraints = [
@@ -55,30 +72,22 @@ def solver(symbol = 'NVDA'):
         x <= 1,
     ]
     indexConstraints = [
-        # x @ weeklyYields >= 0.000,
-        # x @ ethic >= 0.0,
+        x @ yields >= min_yield_threshold,
+        x @ ethic <= esg_max,
         x[-1] == 0
     ]
     constraints = constraints + indexConstraints
     objective = cp.Minimize(cp.quad_form(x - C, cov))
     prob = cp.Problem(objective, constraints) 
     prob.solve(solver="SCS", verbose = False)
-    
-    # # display expected return
-    # print("weights.value @ weeklyYields :", x.value @ weeklyYields)
-    # #display risk
-    # print(cp.quad_form(x, covariance_matrix).value)
-    # # display ethic grade
-    # print(x.value @ ethic)
-    # # display 10 best assets
-    # print(x.value.argsort()[-10:][::-1])
-    # # display names of 10 best assets
-    # print([outData[i].symbol for i in x.value.argsort()[-10:][::-1]])
-    
+
+    # if x.value are very small negative numbers, we set them to 0
+    x.value[x.value < 0] = 0
+
     # rendement moyen du portefeuille
-    portfolio_return = x.value @ weeklyYields
+    portfolio_return = x.value @ yields
     # rendement moyen de l'indice
-    index_return = returns.mean()
+    index_return = yield_index
     # tracking error
     tracking_error = portfolio_return - index_return
 
@@ -86,32 +95,48 @@ def solver(symbol = 'NVDA'):
     print('Index return: ', index_return * 100)
     print('Tracking error: ', tracking_error * 100)
 
-    returns_index = returns
-    returns_x = X @ x.value
+    # returns_index = returns
+    # returns_x = X @ x.value
 
-    returns_index = normalizing(returns_index)
-    returns_x = normalizing(returns_x)
+    dailyprices_index = dailyprices.values @ C
+    dailyprices_x = dailyprices.values @ x.value
+
+
+    # returns_index = normalizing(returns_index)
+    # returns_x = normalizing(returns_x)
 
     # extract all dates 
     # create a dataframe containing the returns of the index and the returns of the portfolio
-    df = pd.DataFrame({'index': returns_index, 'portfolio': returns_x, 'date': data.index})
-    # df.set_index('date', inplace=True)
+    df = pd.DataFrame({'index': dailyprices_index, 'portfolio': dailyprices_x, 'date': data.index})
     # # plot 
-    # plt.plot(returns_index, color='red')
-    # plt.plot(returns_x, color='blue')
+    # plt.plot(dailyprices_index, color='red')
+    # plt.plot(dailyprices_x, color='blue')
     # plt.legend(['index_tracked', 'portfolio'])
 
     # plt.show()
 
     # create a dictionary containing the weights of 10 assets with the highest weights and sixth asset is the sum of the others
     weights = {}
-    for i in x.value.argsort()[-10:][::-1]:
+    for i in x.value.argsort()[-15:][::-1]:
         weights[stock_name[i]] = x.value[i]
     weights['others'] = 1 - sum(weights.values())
+    
+    # if some weights are negative, we set them to 0
+    for key, value in weights.items():
+        if value < 0:
+            weights[key] = 0
+
+    # create a dictionary containing the tracking error and the ethic score
+    performance = {}
+    performance['tracking_error'] = tracking_error
+    performance['esg_score'] = x.value @ ethic
+    performance['portfolio_return'] = portfolio_return
+    performance['portfolio_risk'] = math.sqrt(x.value @ cov @ x.value)
 
 
 
-    return df, tracking_error, weights
+
+    return df, performance, weights
 
 
 def computeAverageYields(data, duration):

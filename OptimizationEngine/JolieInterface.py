@@ -25,6 +25,30 @@ def asking_index_to_track():
 
     return index_to_track
 
+def asking_esg_max():
+    st.slider(label="Quel est le score ESG maximum que vous souhaitez avoir ?", min_value=7.24, max_value=100.0, value=7.24, step=0.5, key='esg_widget')
+    esg_max = st.session_state.get('esg_widget', "")
+    if esg_max == 0:
+        st.stop()
+    try:
+        esg_max = float(esg_max)
+    except:
+        st.stop()
+    
+    return esg_max
+
+def asking_yield_min(min_yield, max_yield):
+    st.slider(label="Quel est le rendement minimum que vous souhaitez avoir ?", min_value=min_yield, max_value=max_yield, value=0.0, step=0.01, key='yield_widget')
+    yield_min = st.session_state.get('yield_widget', "")
+    if yield_min == 0:
+        st.stop()
+    try:
+        yield_min = float(yield_min)
+    except:
+        st.stop()
+    
+    return yield_min
+
 
 if on:
     st.write("Cette fonctionnalité n'est pas encore disponible")
@@ -44,25 +68,36 @@ if on:
         st.stop()
 
 else:
+    esg_max = asking_esg_max()
+    min_yield_threshold = asking_yield_min(-1.0, 11.0)
+
     index_to_track = asking_index_to_track()
 
-    df, tracking_error, weights = opti.solver(index_to_track)
+
+    df, performance, weights = opti.solver(index_to_track, esg_max, min_yield_threshold)
 
     progress_bar = st.sidebar.progress(0, text="Optimisation en cours...")
     chart = st.line_chart(df, x='date', y=['index', 'portfolio'], height=500, width=1000)
+    
     for i in range(1, len(df['index'])):
         if i % 10 == 0:
             progress_bar.progress(int(i / len(df['index']) * 100), text="Optimisation en cours...")
             new_row_df = df.iloc[:i]
             chart.line_chart(new_row_df, x='date', y=['index', 'portfolio'], height=500, width=1000)
+    
     progress_bar.empty()
 
 
     index_to_track = ""
-    st.metric(label="Tracking error (%)", value=round(tracking_error * 100, 2))
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric(label="Tracking error (%)", value=round(performance['tracking_error'] * 100, 3))
+    col2.metric(label="ESG score", value=round(performance['esg_score'], 3))
+    col3.metric(label="Rendement du portefeuille (%)", value=round(performance['portfolio_return'] * 100, 3))
+    col4.metric(label="Volatilité du portefeuille (%)", value=round(performance['portfolio_risk'] * 100, 3))
 
     labels = list(weights.keys())
     values = list(weights.values())
+    # print true if weights are all positive
     explode = [0.1] * len(values)
 
     fig1, ax1 = plt.subplots()
@@ -70,5 +105,7 @@ else:
     ax1.axis('equal')
 
     st.pyplot(fig1)
+    
 
     st.button("Recommencer")
+    st.stop()
