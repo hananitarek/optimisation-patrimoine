@@ -13,7 +13,7 @@ from statsmodels.stats.correlation_tools import cov_nearest
 import loadData
 
 
-def solver(symbol = 'MC.PA', esg_max = 100, min_yield_threshold = -32):
+def solver(min_yield_threshold, esg_max, symbol = 'MC.PA'):
     FICHIER = 'stock_data_french.csv'
     ESG_FILE = 'stock_data_french_esg.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
@@ -56,24 +56,26 @@ def solver(symbol = 'MC.PA', esg_max = 100, min_yield_threshold = -32):
     C = np.zeros(numAssets)
     C[-1] = 1
 
-    # compute the inverse of the covariance matrix
-    inv_cov = np.linalg.inv(cov)
-    ones = np.ones(numAssets)
-    theorical_threshold = esg_max * (ones @ inv_cov @ ones) / (ethic @ inv_cov @ ethic)
-    a = esg_max * (ones @ inv_cov @ ethic) / (ethic @ inv_cov @ ethic)
-    print(a)
-    print(theorical_threshold)
-    print(theorical_threshold - a)
+    
+    
+    c = [cp.sum(x) == 1, 0 <= x, x <= 1]
+    c = c + [x @ ethic <= esg_max, x[-1] == 0]
+    objective = cp.Maximize(x @ yields)
+    prob = cp.Problem(objective, c)
+    prob.solve(solver="SCS", verbose = False)
+    res = x.value
+    max_yield = res @ yields
+    print('Max yield: ', max_yield)
 
     # Create constraints.
     constraints = [
         cp.sum(x) == 1,
         0 <= x,
         x <= 1,
+        min_yield_threshold <= x @ yields,
+        x @ ethic <= esg_max
     ]
     indexConstraints = [
-        # x @ yields >= min_yield_threshold,
-        # x @ ethic <= esg_max,
         x[-1] == 0
     ]
     constraints = constraints + indexConstraints
@@ -91,7 +93,7 @@ def solver(symbol = 'MC.PA', esg_max = 100, min_yield_threshold = -32):
     # tracking error
     tracking_error = portfolio_return - index_return
 
-    print('Portfolio return: ', portfolio_return * 100)
+    print('Portfolio return: ', portfolio_return )
     print('Index return: ', index_return * 100)
     print('Tracking error: ', tracking_error * 100)
 

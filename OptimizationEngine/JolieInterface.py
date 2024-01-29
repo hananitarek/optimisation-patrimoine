@@ -64,7 +64,7 @@ else:
     index_to_track = asking_index_to_track()
 
 
-    df, performance, weights = opti.solver(index_to_track, esg_max, min_yield_threshold)
+    df, performance, weights = opti.solver(min_yield_threshold, esg_max, index_to_track)
 
     progress_bar = st.sidebar.progress(0, text="Optimisation en cours...")
     chart = st.line_chart(df, x='date', y=['index', 'portfolio'], height=500, width=2000)
