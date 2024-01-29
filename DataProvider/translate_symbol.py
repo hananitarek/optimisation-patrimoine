@@ -1,10 +1,9 @@
-
 companies = {
         'MC.PA': 'LVMH',
         'OR.PA': 'L\'Oréal',
         'RMS.PA': 'Hermès',
         'TTE': 'Total',
-        'CDI.PA': 'Kering',
+        'CDI.PA': 'Christian Dior',
         'SNY': 'Sanofi',
         'SU.PA': 'Schneider Electric',
         'AI.PA': 'Air Liquide',
@@ -132,6 +131,8 @@ companies = {
         'PEUG.PA':'Peugeot',
         'QDT.PA':'Quadient',
         'VAC.PA':'Pierre et Vacances',
+        'ENGI.PA':'Engie',
+        'EN.PA':'Bouygues',
 
 }
 def translate_symbol(symbol):

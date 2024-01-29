@@ -1,5 +1,8 @@
 import pandas as pd
 import yfinance as yf
+from datetime import datetime
+from dateutil.relativedelta import *
+
 import numpy as np
 from tqdm import tqdm
 from pandas_datareader import data as wb
@@ -38,17 +41,35 @@ def get_Universe(file, esg_file):
     
     return dailyReturns, ethicGrades, DailyPrices, stock_name
 
-def get_index(symbol):
-    yf.pdr_override()
+def get_index(symbols):
     data_index = pd.DataFrame()
-    data_index = wb.get_data_yahoo(symbol,start='2013-04-16', end='2023-04-13', interval='1d')
-    # data_index['return'] = np.log(data_index['Close']) - np.log(data_index['Close'].shift())
-    # data_index['return'] = data_index['Close'].pct_change()
-    data_index['return'] = np.log(data_index['Close'].pct_change() + 1)
-    return data_index
+    daily_prices_index = pd.DataFrame()
+    to_date = datetime.today().date()
+    from_date = to_date - relativedelta(years=10)
+
+    for symbol in tqdm(symbols, "Getting index data"):
+        yf.pdr_override()
+        current_index = pd.DataFrame()
+        current_index = wb.get_data_yahoo(symbol,start=from_date, end=to_date, interval='1d')
+        current_index['symbol'] = symbol
+        current_index['date'] = current_index.index
+        current_index['return'] = np.log(current_index['Close'].pct_change() + 1)
+
+        data_index = pd.concat([data_index, current_index])
+
+    data_index_return = data_index.copy()[['date', 'symbol', 'return']]
+    data_index_return = data_index_return.pivot(index='date', columns='symbol', values='return')
+    data_index_return = data_index_return[symbols].copy()
+    data_index_return.dropna(inplace=True)
+
+    daily_prices_index = data_index.copy()[['date', 'symbol', 'Close']]
+    daily_prices_index = daily_prices_index.pivot(index='date', columns='symbol', values='Close')
+    daily_prices_index = daily_prices_index[symbols].copy()
+    daily_prices_index.dropna(inplace=True)
+    return data_index_return, daily_prices_index
 
 
-def get_newdata(stocks, esg_data, dailyprices, symbols, data_index):
+def get_newdata(stocks, esg_data, dailyprices, symbols, data_index, daily_prices_index):
     data = stocks.copy()
     esg_d = esg_data.copy()
     dailyprices_d = dailyprices.copy()
@@ -70,9 +91,11 @@ def get_newdata(stocks, esg_data, dailyprices, symbols, data_index):
             esg_d = esg_d[esg_d['symbol'] != sym]
             # drop the corresponding dailyprices
             dailyprices_d.drop(sym, axis=1, inplace=True)
-            
-        data[sym] = data_index['return'].copy()
-        dailyprices_d[sym] = data_index['Close'].copy()
+
+
+    for i in tqdm(range(len(symbols)), "Adding index data"):
+        data[symbols[i]] = data_index[symbols[i]].copy()
+        dailyprices_d[symbols[i]] = daily_prices_index[symbols[i]].copy()
 
     
 
@@ -88,8 +111,7 @@ def get_newdata(stocks, esg_data, dailyprices, symbols, data_index):
     return data, dailyprices_d, esg_d
 
 
-def get_sets(data, stock_name, symbols):
+def get_sets(data, stock_name):
     X = data[stock_name].values
-    returns = data[symbols].values
     return X
 

@@ -11,9 +11,9 @@ from scipy.linalg import cholesky
 from statsmodels.stats.correlation_tools import cov_nearest
 
 import OptimizationEngine.loadData as loadData
+# import loadData as loadData
 
-
-def solver(esg_max, symbol = 'MC.PA'):
+def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5, 0.3, 0.2]):
     FICHIER = 'stock_data_french.csv'
     ESG_FILE = 'stock_data_french_esg.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
@@ -21,16 +21,14 @@ def solver(esg_max, symbol = 'MC.PA'):
 
     dailyReturns, ethicGrades, DailyPrices, stock_name = loadData.get_Universe(chemin_complet, chemin_complete_esg)
     
-    data_index_tracked = loadData.get_index([symbol])
-    data, dailyprices, esg_data = loadData.get_newdata(dailyReturns, ethicGrades, DailyPrices, [symbol], data_index_tracked)
+    data_index_tracked, dailyprices_index = loadData.get_index(symbols)
+    data, dailyprices, esg_data = loadData.get_newdata(dailyReturns, ethicGrades, DailyPrices, symbols, data_index_tracked, dailyprices_index)
 
-    ethic = esg_data['esg_score'].values
-    # add 0 to the end of the array
-    ethic = np.append(ethic, 0)
+
     
     stock_name = data.columns.values
 
-    X = loadData.get_sets(data, stock_name, [symbol])
+    X = loadData.get_sets(data, stock_name)
     cov = np.cov(X, rowvar=False)
     cov = cov_nearest(cov, method="nearest", threshold= 1e-15)
     
@@ -53,8 +51,14 @@ def solver(esg_max, symbol = 'MC.PA'):
 
     x = cp.Variable(numAssets)
     C = np.zeros(numAssets)
-    C[-1] = 1
-
+    # complete the C matrix with the weights of the assets we want to track at the end
+    for i in range(len(symbols)):
+        C[-i-1] = weights[i]
+    
+    ethic = esg_data['esg_score'].values
+    # add 0 to the end of the array
+    for i in range(len(symbols)):
+        ethic = np.append(ethic, 0)
     
     
     # Create constraints.
@@ -62,12 +66,13 @@ def solver(esg_max, symbol = 'MC.PA'):
         cp.sum(x) == 1,
         0 <= x,
         x <= 1,
-        # min(yields) <= x @ yields,
         x @ ethic <= esg_max
     ]
-    indexConstraints = [
-        x[-1] == 0
-    ]
+    indexConstraints = []
+    for i in range(len(symbols)):
+        indexConstraints.append(x[-i-1] == 0)
+
+
     constraints = constraints + indexConstraints
     objective = cp.Minimize(cp.quad_form(x - C, cov))
     prob = cp.Problem(objective, constraints) 
@@ -89,7 +94,7 @@ def solver(esg_max, symbol = 'MC.PA'):
 
     # extract all dates 
     # create a dataframe containing the returns of the index and the returns of the portfolio
-    df = pd.DataFrame({'index': dailyprices_index, 'portfolio': dailyprices_x, 'date': data.index})
+    df = pd.DataFrame({'index': dailyprices_index, 'portfolio': dailyprices_x, 'date': dailyprices.index})
 
 
     # create a dictionary containing the weights of 10 assets with the highest weights and sixth asset is the sum of the others
@@ -115,49 +120,9 @@ def solver(esg_max, symbol = 'MC.PA'):
     index_performance['index_risk'] = C @ cov @ C
 
 
-
-
     return df, performance, index_performance, weights
 
 
-def computeAverageYields(data, duration):
-    res = []
-    for asset in data:
-        indexMin = -1
-        indexMax = -1
-        for i in range(len(asset.DailyPrices)):
-            if asset.DailyPrices[i] != "nan":
-                indexMax = i
-                if indexMin == -1:
-                    indexMin = i
-
-        firstVal = float(asset.DailyPrices[indexMin])
-        lastVal = float(asset.DailyPrices[indexMax])
-
-        globalYield = (lastVal - firstVal) / firstVal
-        periods = (indexMax - indexMin) / duration
-        perPeriodYield = math.pow(1 + globalYield, 1 / periods) - 1
-        res.append((perPeriodYield))
-
-    return np.array(res).astype(float)
-
-
-def computeAndCorrectCov(yields):
-    df = pd.DataFrame(np.transpose(yields)) 
-    covariance_matrix = df.cov()
-
-    validCovMat = False
-    numAssets = yields.shape[0]
-    toadd = 0.000001
-
-    while not validCovMat:
-        try:
-            r = cholesky(covariance_matrix + toadd * np.eye(numAssets))
-            validCovMat = True
-        except:
-            toadd *= 1.1
-    
-    return covariance_matrix + toadd * np.eye(numAssets)
 
 def normalizing(returns):
     return (returns / returns[0])
