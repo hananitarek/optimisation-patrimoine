@@ -10,10 +10,10 @@ from scipy.linalg import cholesky
 
 from statsmodels.stats.correlation_tools import cov_nearest
 
-import loadData
+import OptimizationEngine.loadData as loadData
 
 
-def solver(min_yield_threshold, esg_max, symbol = 'MC.PA'):
+def solver(esg_max, symbol = 'MC.PA'):
     FICHIER = 'stock_data_french.csv'
     ESG_FILE = 'stock_data_french_esg.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
@@ -30,7 +30,7 @@ def solver(min_yield_threshold, esg_max, symbol = 'MC.PA'):
     
     stock_name = data.columns.values
 
-    X, returns = loadData.get_sets(data, stock_name, [symbol])
+    X = loadData.get_sets(data, stock_name, [symbol])
     cov = np.cov(X, rowvar=False)
     cov = cov_nearest(cov, method="nearest", threshold= 1e-15)
     
@@ -48,7 +48,6 @@ def solver(min_yield_threshold, esg_max, symbol = 'MC.PA'):
 
     yields = yields['yield'].values
 
-    # print the max esg score and the min esg score of the universe
 
     numAssets = np.shape(X)[1]
 
@@ -58,21 +57,12 @@ def solver(min_yield_threshold, esg_max, symbol = 'MC.PA'):
 
     
     
-    c = [cp.sum(x) == 1, 0 <= x, x <= 1]
-    c = c + [x @ ethic <= esg_max, x[-1] == 0]
-    objective = cp.Maximize(x @ yields)
-    prob = cp.Problem(objective, c)
-    prob.solve(solver="SCS", verbose = False)
-    res = x.value
-    max_yield = res @ yields
-    print('Max yield: ', max_yield)
-
     # Create constraints.
     constraints = [
         cp.sum(x) == 1,
         0 <= x,
         x <= 1,
-        min_yield_threshold <= x @ yields,
+        # min(yields) <= x @ yields,
         x @ ethic <= esg_max
     ]
     indexConstraints = [
@@ -88,36 +78,19 @@ def solver(min_yield_threshold, esg_max, symbol = 'MC.PA'):
 
     # rendement moyen du portefeuille
     portfolio_return = x.value @ yields
-    # rendement moyen de l'indice
-    index_return = yield_index
-    # tracking error
-    tracking_error = portfolio_return - index_return
-
-    print('Portfolio return: ', portfolio_return )
-    print('Index return: ', index_return * 100)
-    print('Tracking error: ', tracking_error * 100)
-
-    # returns_index = returns
-    # returns_x = X @ x.value
-
     dailyprices_index = dailyprices.values @ C
     dailyprices_x = dailyprices.values @ x.value
 
-    dailyprices_index = min_max_normalization(dailyprices_index)
-    dailyprices_x = min_max_normalization(dailyprices_x)
+    # dailyprices_index = min_max_normalization(dailyprices_index)
+    # dailyprices_x = min_max_normalization(dailyprices_x)
 
-    # returns_index = normalizing(returns_index)
-    # returns_x = normalizing(returns_x)
+    dailyprices_index = normalizing(dailyprices_index)
+    dailyprices_x = normalizing(dailyprices_x)
 
     # extract all dates 
     # create a dataframe containing the returns of the index and the returns of the portfolio
     df = pd.DataFrame({'index': dailyprices_index, 'portfolio': dailyprices_x, 'date': data.index})
-    # # plot 
-    # plt.plot(dailyprices_index, color='red')
-    # plt.plot(dailyprices_x, color='blue')
-    # plt.legend(['index_tracked', 'portfolio'])
 
-    # plt.show()
 
     # create a dictionary containing the weights of 10 assets with the highest weights and sixth asset is the sum of the others
     weights = {}
@@ -132,15 +105,19 @@ def solver(min_yield_threshold, esg_max, symbol = 'MC.PA'):
 
     # create a dictionary containing the tracking error and the ethic score
     performance = {}
-    performance['tracking_error'] = tracking_error
+    performance['tracking_error'] = abs(dailyprices_x[-1] - dailyprices_index[-1]) / dailyprices_index[0]
     performance['esg_score'] = x.value @ ethic
     performance['portfolio_return'] = portfolio_return
-    performance['portfolio_risk'] = math.sqrt(x.value @ cov @ x.value)
+    performance['portfolio_risk'] = x.value @ cov @ x.value
+
+    index_performance = {}
+    index_performance['index_return'] = yield_index
+    index_performance['index_risk'] = C @ cov @ C
 
 
 
 
-    return df, performance, weights
+    return df, performance, index_performance, weights
 
 
 def computeAverageYields(data, duration):
@@ -183,10 +160,7 @@ def computeAndCorrectCov(yields):
     return covariance_matrix + toadd * np.eye(numAssets)
 
 def normalizing(returns):
-    normalized = np.array([0])
-    for i in returns[1 :]:
-        normalized = np.append(normalized, normalized[-1] + i)
-    return normalized
+    return (returns / returns[0])
 
 def min_max_normalization(returns):
     normalized = (returns - returns.mean()) / (returns.max() - returns.min())

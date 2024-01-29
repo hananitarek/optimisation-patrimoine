@@ -18,11 +18,12 @@ symbols = []
 with open(chemin_complet, 'r', encoding='utf-8') as f:
     for line in f:
         line = line.strip()
-        x = line.split()
-        symbols.append(x)
+        # x = line.split()
+        symbols.append(line)
 
+print(symbols)
 
-price_history_client = PriceHistory(symbols[0], user_agent=UserAgent().edge)
+price_history_client = PriceHistory(symbols, user_agent=UserAgent().edge)
 
 
 price_history_client.dataframe_prix.to_csv('DataProvider/stock_datat_french.csv', index=False)

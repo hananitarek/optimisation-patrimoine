@@ -2,7 +2,6 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 from tqdm import tqdm
-from precise_asset import BetterAsset
 from pandas_datareader import data as wb
 import streamlit as st
 
@@ -92,5 +91,5 @@ def get_newdata(stocks, esg_data, dailyprices, symbols, data_index):
 def get_sets(data, stock_name, symbols):
     X = data[stock_name].values
     returns = data[symbols].values
-    return X, returns
+    return X
 
