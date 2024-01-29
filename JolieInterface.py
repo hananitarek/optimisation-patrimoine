@@ -26,8 +26,8 @@ def asking_index_to_track(col, i):
 
     return index_to_track
 
-def asking_weight(col, i):
-    col.slider(label="Quel est le poids que vous souhaitez donner à cet indice ?", min_value=0.00, max_value=1.00, value=0.00, step=0.001, key='weight_widget'+ str(i))
+def asking_weight(col, i, last_bound):
+    col.slider(label="Quel est le poids que vous souhaitez donner à cet indice ?", min_value=0.00, max_value=last_bound, value=0.00, step=0.001, key='weight_widget'+ str(i))
     weight = st.session_state.get('weight_widget'+ str(i), "")
 
     return weight
@@ -75,15 +75,19 @@ else:
     option = asking_number_of_assets()
 
     index_to_track = []
+    weights = []
+    last_bound = 1.0
 
     for i in range(option):
         col1, col2 = st.columns(2)
         index = asking_index_to_track(col1, i)
-        weight = asking_weight(col2, i)
+        weight = asking_weight(col2, i, last_bound)
 
-        index_to_track.append((index, weight))
-        
-    st.stop()
+        index_to_track.append(index)
+        weights.append(weight)
+        last_bound -= weight
+    
+    
 
     df, performance, index_performance, weights = opti.solver(esg_max, index_to_track)
 
