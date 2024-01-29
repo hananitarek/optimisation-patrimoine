@@ -43,7 +43,7 @@ def asking_yield_min(min_yield, max_yield):
     return yield_min
 
 def asking_number_of_assets():
-    st.selectbox(label="Combien d'actifs souhaitez vous détenir dans votre portefeuille ?", options=[1, 2, 3], key='number_of_assets_widget')
+    st.selectbox(label="Combien d'actifs souhaitez vous répliquer dans votre portefeuille benchmark?", options=[1, 2, 3], key='number_of_assets_widget')
     option = st.session_state.get('number_of_assets_widget', "")
 
     return option
@@ -58,14 +58,13 @@ col1, col2 = st.columns(2)
 for i in range(option):
     
     index = asking_index_to_track(col1, i)
-
     index_to_track.append(index)
     
-weights = [ col2.number_input(f"Weight {i}", 0.0, 1.0, value=0.0, step=0.05) for i in range(1, option) ]
-last_weight = col2.number_input(f"Last weight", 0.0, 1.0, value=(1.0 - sum(weights)), disabled=True)
+weights = [ col2.number_input(f"Poids {i}", 0.0, 1.0, value=0.0, step=0.05) for i in range(1, option) ]
+last_weight = col2.number_input(f"Dernier Poids", 0.0, 1.0, value=(1.0 - sum(weights)), disabled=True)
 
 # stop if index to track is empty
-if all([index == "" for index in index_to_track]):
+if all([index != "" for index in index_to_track]) == False:
     st.stop()
 
 
