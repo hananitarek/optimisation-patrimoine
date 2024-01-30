@@ -80,7 +80,6 @@ if all([weight != 0 for weight in weights]) == False:
 
 weights.append(last_weight)
 index_to_track = [translate_symbol.translate_company(index) for index in index_to_track]
-print(index_to_track)
 df, performance, index_performance, weights = opti.solver(esg_max, index_to_track, weights)
 
 
