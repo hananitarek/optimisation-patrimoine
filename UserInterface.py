@@ -9,20 +9,22 @@ import time as t
 import OptimizationEngine.threeDOptiTE as opti
 import matplotlib.pyplot as plt
 import DataProvider.translate_symbol as translate_symbol
+import DataProvider.translate_symbol as translate_symbol
 
 st.set_page_config(layout="wide")
 st.title("""*Optimisation de patrimoine*""")
 st.header("version 1.0")
 
+companies = list(translate_symbol.companies.values())
+companies.sort()
 
 
 def asking_index_to_track(col, i):
     col.text_input(label="Quel indice souhaitez-vous suivre ? (ex : S&P500, CAC40, ...)", value="", key='index_widget' + str(i))
     index_to_track = st.session_state.get('index_widget' + str(i) , "")
 
-    
-
     return index_to_track
+
 
 def asking_weight(col, i, last_bound):
     col.slider(label="Quel est le poids que vous souhaitez donner à cet indice ?", min_value=0.00, max_value=last_bound, value=0.00, step=0.001, key='weight_widget'+ str(i))
@@ -43,35 +45,42 @@ def asking_yield_min(min_yield, max_yield):
     return yield_min
 
 def asking_number_of_assets():
-    st.selectbox(label="Combien d'actifs souhaitez vous répliquer dans votre portefeuille benchmark?", options=[1, 2, 3], key='number_of_assets_widget')
+    st.selectbox(label="Combien d'actifs souhaitez vous répliquer dans votre portefeuille benchmark", options=[1, 2, 3], key='number_of_assets_widget')
     option = st.session_state.get('number_of_assets_widget', "")
 
     return option
 
 
 esg_max = asking_esg_max()
-option = asking_number_of_assets()  
+# option = asking_number_of_assets()
 
 index_to_track = []
 
-col1, col2 = st.columns(2)
-for i in range(option):
+# for i in range(option):
     
-    index = asking_index_to_track(col1, i)
-    index_to_track.append(index)
-    
-weights = [ col2.number_input(f"Poids {i}", 0.0, 1.0, value=0.0, step=0.05) for i in range(1, option) ]
-last_weight = col2.number_input(f"Dernier Poids", 0.0, 1.0, value=(1.0 - sum(weights)), disabled=True)
+#     index = asking_index_to_track(col1, i)
+#     index_to_track.append(index)
+
+index_to_track = st.multiselect(label="Constituez votre portefeuille benchmark", options=companies, key='portfolio_widget')
+
+if index_to_track == []:
+    st.stop()
+
+
+option = len(index_to_track)
+weights = [ st.number_input(f"Poids {index_to_track[i]}", 0.0, 1.0, value=0.0, step=0.05) for i in range(0, option - 1) ]
+last_weight = st.number_input(f"Poids de {index_to_track[option-1]}", 0.0, 1.0, value=(1.0 - sum(weights)), disabled=True)
 
 # stop if index to track is empty
-if all([index != "" for index in index_to_track]) == False:
+if all([weight != 0 for weight in weights]) == False:
     st.stop()
 
 
 ## Autocomplete the last one. (Disabling it is not required)
 
 weights.append(last_weight)
-
+index_to_track = [translate_symbol.translate_company(index) for index in index_to_track]
+print(index_to_track)
 df, performance, index_performance, weights = opti.solver(esg_max, index_to_track, weights)
 
 

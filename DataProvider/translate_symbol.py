@@ -141,3 +141,9 @@ def translate_symbol(symbol):
                 return companies[symbol]
             else:
                 return symbol
+
+def translate_company(company):
+    for key, value in companies.items():
+        if value == company:
+            return key
+    return company
