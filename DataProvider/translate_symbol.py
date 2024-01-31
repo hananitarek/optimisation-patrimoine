@@ -1,8 +1,8 @@
 companies = {
-        '(Indice) ^FCHI': 'CAC40',
-        '(Indice) ^DJI': 'Dow Jones',
-        '(Indice) ^GSPC': 'S&P500',
-        '(Indice) ^IXIC': 'Nasdaq',
+        '^FCHI': '(Indice) CAC40',
+        '^DJI': '(Indice) Dow Jones',
+        '^GSPC': '(Indice) S&P500',
+        '^IXIC': '(Indice) Nasdaq',
         'MC.PA': 'LVMH',
         'OR.PA': 'L\'Oréal',
         'RMS.PA': 'Hermès',
