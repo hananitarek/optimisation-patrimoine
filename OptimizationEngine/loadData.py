@@ -45,7 +45,7 @@ def get_index(symbols):
     data_index = pd.DataFrame()
     daily_prices_index = pd.DataFrame()
     to_date = datetime.today().date()
-    from_date = to_date - relativedelta(years=10)
+    from_date = to_date - relativedelta(years=20)
 
     for symbol in tqdm(symbols, "Getting index data"):
         yf.pdr_override()
@@ -75,7 +75,7 @@ def get_newdata(stocks, esg_data, dailyprices, symbols, data_index, daily_prices
     dailyprices_d = dailyprices.copy()
 
     # supprimer les colonnes des indices qui ont trop de valeurs manquantes
-    data.dropna(axis=1, thresh=0.8*len(data), inplace=True)
+    data.dropna(axis=1, thresh=0.95*len(data), inplace=True)
     # supprimer les lignes de esg_data qui ne sont pas dans data
     esg_d = esg_d[esg_d['symbol'].isin(data.columns)]
     # supprimer les colonnes de dailyprices qui ne sont pas dans data

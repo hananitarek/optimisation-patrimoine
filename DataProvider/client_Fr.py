@@ -36,7 +36,7 @@ class PriceHistory():
 
         to_date = datetime.today().date()
 
-        from_date = to_date - relativedelta(years=10)
+        from_date = to_date - relativedelta(years=20)
 
         for symbol in tqdm(self._symbols):
             yf.pdr_override()
