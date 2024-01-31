@@ -3,6 +3,17 @@ companies = {
         '^DJI': '(Indice) Dow Jones',
         '^GSPC': '(Indice) S&P500',
         '^IXIC': '(Indice) Nasdaq',
+        '^NYA': '(Indice) NYSE',
+        '^FTSE': '(Indice) FTSE100',
+        'EURCHF=X': '(Devise) EUR/CHF',
+        'BZ=F': '(Matière première) Pétrole Brent',
+        'GC=F': '(Matière première) Or',
+        'SI=F': '(Matière première) Argent',
+        'ZC=F': '(Matière première) Maïs',
+        'ZS=F': '(Matière première) Soja',
+        'ZW=F': '(Matière première) Blé',
+        'OJ=F': '(Matière première) Jus d\'orange',
+        'SB=F': '(Matière première) Sucre',
         'MC.PA': 'LVMH',
         'OR.PA': 'L\'Oréal',
         'RMS.PA': 'Hermès',
@@ -134,6 +145,8 @@ companies = {
         'VAC.PA':'Pierre et Vacances',
         'ENGI.PA':'Engie',
         'EN.PA':'Bouygues',
+        'STM':'STMicroelectronics',
+        'MT.AS':'ArcelorMittal',
 
 }
 def translate_symbol(symbol):

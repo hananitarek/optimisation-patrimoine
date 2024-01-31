@@ -7,7 +7,6 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 parentDirectoryPath = path.dirname (path.dirname(path.abspath(__file__)))
 
 
-import two_step_withmoredata as ts
 from tqdm import tqdm
 from chromosome import Chromosome
 from costfunction import IndexTracker
@@ -157,8 +156,6 @@ class GeneticAlgorithm:
                 self.Genetics.genes[j].portfolioreturns = scores[1]
                 self.Genetics.genes[j].weights = scores[2]
                 self.Genetics.genes[j].assets = scores[3]
-
-            # TODO : enrichir liste des meilleures fitness 
 
 
         

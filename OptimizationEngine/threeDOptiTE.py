@@ -86,9 +86,6 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
     dailyprices_index = dailyprices.values @ C
     dailyprices_x = dailyprices.values @ x.value
 
-    # dailyprices_index = min_max_normalization(dailyprices_index)
-    # dailyprices_x = min_max_normalization(dailyprices_x)
-
     dailyprices_index = normalizing(dailyprices_index)
     dailyprices_x = normalizing(dailyprices_x)
 
@@ -119,8 +116,14 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
     index_performance['index_return'] = yield_index
     index_performance['index_risk'] = C @ cov @ C
 
+    # create a dataframe containing the composition of the portfolio
+    composition = pd.DataFrame({'symbol': stock_name, 'weight (%)': x.value * 100})
+    composition = composition.sort_values(by='weight (%)', ascending=False)
 
-    return df, performance, index_performance, weights
+
+
+
+    return df, performance, index_performance, weights, composition
 
 
 

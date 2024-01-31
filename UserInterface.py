@@ -50,16 +50,14 @@ def asking_number_of_assets():
 
     return option
 
+@st.cache_data
+def convert_df(df):
+    return df.to_csv().encode('utf-8')
+
 
 esg_max = asking_esg_max()
-# option = asking_number_of_assets()
 
 index_to_track = []
-
-# for i in range(option):
-    
-#     index = asking_index_to_track(col1, i)
-#     index_to_track.append(index)
 
 index_to_track = st.multiselect(label="Constituez votre portefeuille benchmark", options=companies, key='portfolio_widget')
 
@@ -69,6 +67,10 @@ if index_to_track == []:
 
 option = len(index_to_track)
 weights = [ st.number_input(f"Poids {index_to_track[i]}", 0.0, 1.0, value=0.0, step=0.05) for i in range(0, option - 1) ]
+if sum(weights) > 1:
+    st.warning("La somme des poids ne peut pas dépasser 100%")
+    st.stop()
+
 last_weight = st.number_input(f"Poids de {index_to_track[option-1]}", 0.0, 1.0, value=(1.0 - sum(weights)), disabled=True)
 
 # stop if index to track is empty
@@ -80,8 +82,11 @@ if all([weight != 0 for weight in weights]) == False:
 
 weights.append(last_weight)
 index_to_track = [translate_symbol.translate_company(index) for index in index_to_track]
-df, performance, index_performance, weights = opti.solver(esg_max, index_to_track, weights)
+df, performance, index_performance, weights, composition = opti.solver(esg_max, index_to_track, weights)
 
+# translate the symbols in composition
+composition['symbol'] = [translate_symbol.translate_symbol(symbol) for symbol in composition['symbol']]
+csv = convert_df(composition)
 
 progress_bar = st.sidebar.progress(0, text="Optimisation en cours...")
 chart = st.line_chart(df, x='date', y=['index', 'portfolio'], height=500, width=2000)
@@ -93,6 +98,10 @@ for i in range(1, len(df['index'])):
         chart.line_chart(new_row_df, x='date', y=['index', 'portfolio'], height=500, width=2000)
 
 progress_bar.empty()
+
+
+
+
 
 col1, col2, col3, col4 = st.columns(4)
 col3.metric(label="Rendement indice (%)", value=round(index_performance['index_return'] * 100, 3))
@@ -123,6 +132,12 @@ ax1.axis('equal')
 
 st.pyplot(fig1)
 
+st.download_button(
+    label="Télécharger la composition du portefeuille",
+    data=csv,
+    file_name='composition.csv',
+    mime='text/csv'
+)
 
 st.button("Recommencer")
 st.stop()

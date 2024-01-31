@@ -2,12 +2,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys
+import os
+
+from datetime import datetime
+from dateutil.relativedelta import *
 from os import path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 parentDirectoryPath = path.dirname (path.dirname(path.abspath(__file__)))
 
 
-import two_step_withmoredata as ts
 from tqdm import tqdm
 from chromosome import Chromosome
 from costfunction import IndexTracker
@@ -86,10 +89,12 @@ def genetic_algorithm(data, population_size=200, num_generations=50, mutation_ra
 
 
 
-if __name__ == "__main__": 
-    stocks = pd.read_csv(path.join(parentDirectoryPath , "data/stock_data_last_out2.csv"))
+if __name__ == "__main__":
+    FICHIER = 'stock_data_french.csv'
+    chemin_complet = os.path.join('DataProvider', FICHIER)
+    stocks = pd.read_csv(chemin_complet)
     stocks = stocks[['date', 'symbol', 'close']]
-    stocks['return'] = stocks['close'] * 100
+    stocks['return'] = stocks['Close'] * 100
 
     drop = np.array([0])
 
@@ -98,8 +103,8 @@ if __name__ == "__main__":
             drop = np.append(drop, i)
 
     stocks.drop(index = drop, inplace = True)
-    stocks = stocks.copy().loc[:,['date','symbol','close']]
-    stocks = stocks.pivot(index='date', columns='symbol', values='close')
+    stocks = stocks.copy().loc[:,['date','symbol','Close']]
+    stocks = stocks.pivot(index='date', columns='symbol', values='Close')
 
 
 
@@ -107,7 +112,9 @@ if __name__ == "__main__":
 
     yf.pdr_override()
     index = pd.DataFrame()
-    index = wb.get_data_yahoo("^FTSE",start='2013-04-16', end='2023-04-13', interval='1d')
+    to_date = datetime.today().date()
+    from_date = to_date - relativedelta(years=10)
+    index = wb.get_data_yahoo("^FTSE",start=from_date, end=to_date, interval='1d')
 
     index['return'] = index['Close']
     
