@@ -45,7 +45,7 @@ def get_index(symbols):
     data_index = pd.DataFrame()
     daily_prices_index = pd.DataFrame()
     to_date = datetime.today().date()
-    from_date = to_date - relativedelta(years=20)
+    from_date = to_date - relativedelta(years=10)
 
     for symbol in tqdm(symbols, "Getting index data"):
         yf.pdr_override()

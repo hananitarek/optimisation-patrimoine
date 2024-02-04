@@ -47,6 +47,10 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
     yields = yields['yield'].values
 
 
+    # yield_index_krach which uses a beta law to simulate the yield of the index in case of a krach around 20%
+    yield_index_krach = yields - (0.2*np.random.beta(2, 5, len(yields)) * np.pi / 2)
+    
+
     numAssets = np.shape(X)[1]
 
     x = cp.Variable(numAssets)
@@ -66,7 +70,8 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
         cp.sum(x) == 1,
         0 <= x,
         x <= 1,
-        x @ ethic <= esg_max
+        # x @ ethic <= esg_max,
+        (x - C) @ yield_index_krach >= 15
     ]
     indexConstraints = []
     for i in range(len(symbols)):
@@ -74,8 +79,9 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
 
 
     constraints = constraints + indexConstraints
+    objective1 = cp.Maximize((x - C) @ yields)
     objective = cp.Minimize(cp.quad_form(x - C, cov))
-    prob = cp.Problem(objective, constraints) 
+    prob = cp.Problem(objective1, constraints) 
     prob.solve(solver="SCS", verbose = False)
 
     # if x.value are very small negative numbers, we set them to 0
@@ -120,7 +126,8 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
     composition = pd.DataFrame({'symbol': stock_name, 'weight (%)': x.value * 100})
     composition = composition.sort_values(by='weight (%)', ascending=False)
 
-
+    # print the krach yield of the portfolio
+    print("Krach yield : ", x.value @ yield_index_krach)
 
 
     return df, performance, index_performance, weights, composition
