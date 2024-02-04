@@ -14,7 +14,7 @@ import OptimizationEngine.loadData as loadData
 # import loadData as loadData
 
 def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5, 0.3, 0.2]):
-    FICHIER = 'stock_data_french.csv'
+    FICHIER = 'stock_data.csv'
     ESG_FILE = 'stock_data_french_esg.csv'
     chemin_complet = os.path.join('DataProvider', FICHIER)
     chemin_complete_esg = os.path.join('DataProvider', ESG_FILE)
