@@ -147,7 +147,29 @@ companies = {
         'EN.PA':'Bouygues',
         'STM':'STMicroelectronics',
         'MT.AS':'ArcelorMittal',
-
+        'AYA.TO':'Aya Gold & Silver',
+        '600489.SS':'Zhongjin Gold Corp.,LtdZhongjin Gold Corp.,Ltd',
+        '601069.SS':'Western Region Gold Co., Ltd.',
+        'CG.TO':'Centerra Gold Inc.',
+        'ELO1.SG':'Eldorado Gold Corp.',
+        'FVI.TO':'Fortuna Silver Mines Inc.',
+        'SSL.TO':'Sandstorm Gold Ltd.',
+        'OR':'Osisko Gold Royalties Ltd',
+        'RGLD':'Royal Gold, Inc.',
+        'WPM.TO':'Wheaton Precious Metals Corp.',
+        'PSK.TO':'PrairieSky Royalty Ltd.',
+        'FRU.TO':'Freehold Royalties Ltd.',
+        'CNE.TO':'Canacol Energy Ltd',
+        'ECOPETROL.CL':'Ecopetrol S.A.',
+        'KOS':'Kosmos Energy Ltd.',
+        'MEDC.JK':'Medco Energi Internasional Tbk.',
+        'WDS':'Woodside Energy Group Ltd.',
+        'AR':'Antero Resources Corp.',
+        'CNQ.TO':'Canadian Natural Resources Ltd.',
+        'ARLP':'Alliance Resource Partners, L.P.',
+        'BRY':'Berry Corporation',
+        '601918.SS':'China Coal Xinji Energy Co.,Ltd.',
+        'YAL.AX':'Yancoal Australia Ltd.'
 }
 def translate_symbol(symbol):
             symbol = symbol.strip()

@@ -25,7 +25,7 @@ class PriceHistory():
         self.user_agent = user_agent
         self.dataframe_prix = self._build_dataframes()
 
-        self.dataframe_esg = self._build_esg_dataframes()
+        # self.dataframe_esg = self._build_esg_dataframes()
 
 
     def symbols(self):

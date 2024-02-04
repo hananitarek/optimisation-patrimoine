@@ -24,7 +24,7 @@ with open(chemin_complet, 'r', encoding='utf-8') as f:
 price_history_client = PriceHistory(symbols, user_agent=UserAgent().edge)
 
 
-price_history_client.dataframe_prix.to_csv('DataProvider/stock_datat_french.csv', index=False)
+price_history_client.dataframe_prix.to_csv('DataProvider/stock_data.csv', index=False)
 # price_history_client.dataframe_esg.to_csv('DataProvider/stock_datat_french_esg.csv', index=False)
 
 
