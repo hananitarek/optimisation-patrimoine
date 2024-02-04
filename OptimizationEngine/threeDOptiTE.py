@@ -1,11 +1,8 @@
 #! /usr/bin/env python3
 import os
-import math
 import cvxpy as cp
 import numpy as np
-import pandas as pd 
-import matplotlib.pyplot as plt 
-from scipy.linalg import cholesky
+import pandas as pd
 
 
 from statsmodels.stats.correlation_tools import cov_nearest
@@ -70,8 +67,8 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
         cp.sum(x) == 1,
         0 <= x,
         x <= 1,
-        # x @ ethic <= esg_max,
-        (x - C) @ yield_index_krach >= 15
+        x @ ethic <= esg_max,
+        # (x - C) @ yield_index_krach >= 15
     ]
     indexConstraints = []
     for i in range(len(symbols)):
@@ -79,9 +76,9 @@ def solver(esg_max = 100, symbols = ['MC.PA', 'ORAN', 'MDM.PA'], weights = [0.5,
 
 
     constraints = constraints + indexConstraints
-    objective1 = cp.Maximize((x - C) @ yields)
+    # objective1 = cp.Maximize((x - C) @ yields)
     objective = cp.Minimize(cp.quad_form(x - C, cov))
-    prob = cp.Problem(objective1, constraints) 
+    prob = cp.Problem(objective, constraints) 
     prob.solve(solver="SCS", verbose = False)
 
     # if x.value are very small negative numbers, we set them to 0

@@ -33,7 +33,7 @@ def asking_weight(col, i, last_bound):
     return weight
 
 def asking_esg_max():
-    st.slider(label="Quel est le score ESG maximum que vous souhaitez avoir ?", min_value=6.6, max_value=44.9, value=10.0, step=0.5, key='esg_widget')
+    st.slider(label="Quel est le score ESG maximum que vous souhaitez avoir ?", min_value=6.6, max_value=70.0, value=10.0, step=0.5, key='esg_widget')
     esg_max = st.session_state.get('esg_widget', "")
     
     return esg_max
