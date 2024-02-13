@@ -3,16 +3,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sys
 from os import path
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-parentDirectoryPath = path.dirname (path.dirname(path.abspath(__file__)))
-
-
+import os
 from tqdm import tqdm
 from chromosome import Chromosome
 from costfunction import IndexTracker
 import yfinance as yf
 from pandas_datareader import data as wb
 from time import time as t
+
+from datetime import datetime
+from dateutil.relativedelta import *
 
 class Genetics:
     def __init__(self, population_size, numAssets, nb_stocks_available, ga_type):
@@ -199,10 +199,12 @@ class GeneticAlgorithm:
 # test 
 if __name__ == "__main__":
     # we load the data
-    stocks = pd.read_csv(path.join(parentDirectoryPath , "data/stock_data_last_out2.csv"))
-    stocks = stocks[['date', 'symbol', 'close']]
+    FICHIER = 'stock_data.csv'
+    chemin_complet = os.path.join('DataProvider', FICHIER)
+    stocks = pd.read_csv(chemin_complet)
+    stocks = stocks[['date', 'symbol', 'Close']]
 
-    stocks['Adj Close'] = stocks['close']  * 100 
+    stocks['Adj Close'] = stocks['Close'] * 100
 
 
     drop = np.array([0])
@@ -225,7 +227,9 @@ if __name__ == "__main__":
 
     yf.pdr_override()
     index = pd.DataFrame()
-    index = wb.get_data_yahoo("^FTSE",start='2013-12-09', end='2023-04-14', interval='1d')
+    to_date = datetime.today().date()
+    from_date = to_date - relativedelta(years=10)
+    index = wb.get_data_yahoo("^FTSE",start=from_date, end=to_date, interval='1d')
 
     # index['return'] = np.log(index['Close']) - np.log(index['Close'].shift())
     index['Adj Close'] = index['Close']
@@ -251,9 +255,9 @@ if __name__ == "__main__":
 
     # we define the parameters
     numCycles = 100
-    population_size = 100
+    population_size = 20
     genetic_params = [0.8, 0.075,0.5, 4] # prob_crossover, prob_mutation, replacement_rate, tournament_size
-    tracker_params = [15, 0.01, 30, 0.01, 1] # taille_portefeuille, min_weight, periode, cout_transaction, lmbda
+    tracker_params = [80, 0.01, 30, 0.01, 1] # taille_portefeuille, min_weight, periode, cout_transaction, lmbda
 
     # we create the genetic algorithm
     param_mult = 100
@@ -284,8 +288,6 @@ if __name__ == "__main__":
 
     # plot the returns of the solution
 
-    
-
     # extract from stocks a new dataframe with only the stocks in the portfolio
     fdata = stocks[best_portfolio[0]]
 
@@ -296,13 +298,6 @@ if __name__ == "__main__":
         weight_vector
     )
 
-
-
-    plt.plot(portfolioreturns, label = "portfolio", color = 'blue')
-    plt.plot(index_returns, label = "index", color = 'red')
-    plt.legend()
-
-    plt.show()
 
     # we subtract the mean and divide by the standard deviation because we want to compare the returns of the portfolio to the returns of the index
     # this comparison is not possible if the returns are not on the same scale (mean and standard deviation) 

@@ -1,1 +1,3 @@
 *.pyc
+/home/tarek/optimisation-patrimoine/OptimizationEngine/__pycache__
+/home/tarek/optimisation-patrimoine/OptimizationEngine/genetical_attempt/__pycache__
