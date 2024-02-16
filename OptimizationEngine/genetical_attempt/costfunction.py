@@ -9,7 +9,7 @@ class IndexTracker:
     This class is used to track the index of the portfolio
     '''
     
-    def __init__(self, taille_portefeuille, min_weight, periode, cout_transaction, stocks_name, stocks, index, param_mult, lmbda = 1):
+    def __init__(self, taille_portefeuille, min_weight, rebalancing_period, transaction_cost, stocks, index):
         ''' 
         stocks : list of stocks
         
@@ -26,17 +26,10 @@ class IndexTracker:
 
         self.taille_portefeuille = taille_portefeuille
         self.min_weight = min_weight
-        self.periode = periode
-        self.cout_transaction = cout_transaction
+        self.rebalancing_period = rebalancing_period
+        self.transaction_cost = transaction_cost
         self.stocks = stocks
-        self.dictionary = {}
-        self.stocks_name = stocks_name
-        self.index_returns = index
-        self.lmbda = lmbda
-        self.param_mult = param_mult
-
-        for i in range(len(self.stocks_name)):
-            self.dictionary[self.stocks_name[i]] = self.stocks[self.stocks_name[i]].values
+        self.index = index
 
     def CalculPoids(self, chromo):
         ''' 
@@ -47,13 +40,26 @@ class IndexTracker:
         '''
         assets = np.zeros(self.taille_portefeuille)
         weights = np.zeros(self.taille_portefeuille)
-
-        for i in range(len(chromo.chromosome)):
-            weights[i] = max(self.min_weight, chromo.chromosome[i])
+        sorted_genome = np.sort(chromo)
+        count = 0 # compteur pour les poids nuls
+        for i in range(len(chromo)):
+            # weights[i] = max(self.min_weight, chromo.chromosome[i])
             
-            assets[i] = chromo.assets[i]
+            # assets[i] = chromo.assets[i]
+            if count >= self.taille_portefeuille:
+                break
+            if sorted_genome[-self.taille_portefeuille] <= chromo[i]:
+                # si le poids le plus faible est supérieur à la valeur du chromosome
+                assets[count] = i
+                weights[count] = max(0.001,
+                                     chromo[i] - (1 - self.taille_portefeuille / len(self.stocks))
+                                     )
+            
+                count += 1
 
-        weights = weights / np.sum(weights)
+        weights = (1 - self.taille_portefeuille * self.min_weight) * weights / np.sum(weights)
+        weights += self.min_weight
+        # weights = weights / np.sum(weights)
         
 
         return weights, assets
@@ -62,7 +68,7 @@ class IndexTracker:
 
 
 
-    def evaluation(self, chromo, evaluation_range, param_mult):
+    def evaluation(self, chromo, evaluation_range):
         '''
         chromo  : chromosome of the individual
         Cette fonction calcule le rendement du portefeuille en fonction du chromosome de l'individu
@@ -71,19 +77,19 @@ class IndexTracker:
         
         weights, assets = self.CalculPoids(chromo)
 
-        index_returns = self.index_returns
+        index_returns = self.index.prices
 
-        shares = [0 for i in range(len(assets))]
-        #currentweights = np.zeros(len(weights))
+        shares = [0 for _ in range(len(assets))]
+        currentweights = np.zeros(len(weights))
 
         for k in range(len(shares)):
-            shares[k] = self.stocks_name[int(assets[k])]
+            shares[k] = self.stocks[int(assets[k])]
         
-            #currentweights[k] = weights[k]
+            currentweights[k] = weights[k]
 
         portfolioreturns = np.ones(evaluation_range[1])
         tracking_error = np.zeros(evaluation_range[1])
-        # delweights = np.zeros(len(weights))
+        delweights = np.zeros(len(weights))
 
         for j in range(evaluation_range[0], evaluation_range[1]):
             
@@ -92,14 +98,26 @@ class IndexTracker:
                 
                 try:
                     # prix de l'action k le jour j à partir de la dataframe stocks
-                   
                     value = self.dictionary[shares[k]][j-1]
-                    #value = self.stocks.iat[j-1, k-1]
 
-                    current_periodreturn += value * weights[k]
+                    current_periodreturn += value * currentweights[k]
 
                 except:
                     current_periodreturn += 0.0*weights[k]
+
+            for k in range(len(shares)):
+                try:
+                    currentweights[k] *= (self.dictionary[shares[k]][j-1] / current_periodreturn)
+                    delweights[k] = weights[k] - currentweights[k]
+                except:
+                    delweights[k] = 0
+
+
+            if np.mod(j - evaluation_range[0], self.rebalancing_period) == 0:
+                cost = sum(
+                    abs(delweights)
+                ) * self.transaction_cost
+                current_periodreturn = current_periodreturn - cost
 
             portfolioreturns[j] = current_periodreturn
 
@@ -107,15 +125,14 @@ class IndexTracker:
 
 
 
-        portfolio_mean = np.mean(portfolioreturns)
-        portfolio_std = np.std(portfolioreturns)
-        sharp_ratio = portfolio_mean / portfolio_std * np.sqrt(252) # 252 = nombre de jours de trading par an
+        # portfolio_mean = np.mean(portfolioreturns)
+        # portfolio_std = np.std(portfolioreturns)
+        # sharp_ratio = portfolio_mean / portfolio_std * np.sqrt(252) # 252 = nombre de jours de trading par an
 
-        truetracking_error = np.sqrt(np.var(tracking_error[evaluation_range[0]:evaluation_range[1]]))
-
+        truetracking_error = np.sqrt(np.sum(np.power(tracking_error[evaluation_range[0]:evaluation_range[1]],2))/(evaluation_range[1]-evaluation_range[0]))
         # fit = self.lmbda * truetracking_error + (1 - self.lmbda) * er
         
-        fit =  truetracking_error  / 100 
+        fit =  truetracking_error
         # fit = 0
         # fit =  self.lmbda * sharp_ratio
 

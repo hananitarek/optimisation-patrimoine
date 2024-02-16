@@ -10,18 +10,17 @@ from costfunction import IndexTracker
 import yfinance as yf
 from pandas_datareader import data as wb
 from time import time as t
-
+from Stock import Stock
 from datetime import datetime
 from dateutil.relativedelta import *
 
 class Genetics:
-    def __init__(self, population_size, numAssets, nb_stocks_available, ga_type):
+    def __init__(self, population_size, numAssets, ga_type):
         self.population_size = population_size   # population_size is an integer : le nombre de portefeilles dans la population
         self.numAssets = numAssets               # numAssets is an integer : le nombre d'actions dans le dataset
-        self.nb_stocks_available = nb_stocks_available # nb_stocks_available is an integer : le nombre d'actions disponibles dans le dataset
 
-        self.genes = [Chromosome(numAssets, nb_stocks_available) for i in range(population_size)] # genes is a list of Chromosome objects
-
+        self.genes = [Chromosome(numAssets) for i in range(population_size)] # genes is a list of Chromosome objects
+        
         self.fitted_genes = []
         self.unfitted_genes = []
         self.fittest_index = 0
@@ -87,7 +86,6 @@ class Genetics:
     def mutate(self):
         for i in self.genes:
             if i.to_replace:
-                
                 i = self.fittest_genes[int(np.random.random() * len(self.fittest_genes))].clone()
                 i.mutate(self.ga_type.prob_mutation)
     
@@ -103,9 +101,9 @@ class Genetics:
                     split = int(np.random.random() * self.numAssets)
 
                     for j in range(self.numAssets):
-                        fils.chromosome[j] = mere.chromosome[j]
-                        if j > split:
-                            fils.chromosome[j] = pere.chromosome[j]
+                        fils.chromosome[j] = pere.chromosome[j]
+                        if j < split:
+                            fils.chromosome[j] = mere.chromosome[j]
         
 
                     
@@ -130,41 +128,42 @@ class GeneticAlgorithm:
         cls.replacement_rate = replacement_rate
         cls.tournament_size = tournament_size
     
-    def __init__(self, numCycles, population_size, stocks_name, stocks, index_returns, genetic_params, tracker_params, param_mult):
+    def __init__(self, numCycles, population_size, stocks, index, genetic_params, tracker_params):
         prob_crossover, prob_mutation, replacement_rate, tournament_size = genetic_params
         self.update_parameters(prob_crossover, prob_mutation, replacement_rate, tournament_size)
-        taille_portefeuille, min_weight, periode, cout_transaction, lmbda = tracker_params
+        taille_portefeuille, min_weight, periode, cout_transaction = tracker_params
 
         self.stocks = stocks
         self.numCycles = numCycles
         self.stocks_name = stocks_name
-        self.index_returns = index_returns
-        self.evaluateur = IndexTracker(taille_portefeuille, min_weight, periode, cout_transaction, stocks_name, stocks, index_returns, lmbda, param_mult)
-        self.Genetics = Genetics(population_size, taille_portefeuille, len(stocks_name), self.__class__) # params : population_size, numAssets, ga_type
+        self.index = index
+        self.evaluateur = IndexTracker(taille_portefeuille, min_weight, periode, cout_transaction, stocks, index)
+        self.Genetics = Genetics(population_size, len(stocks), self.__class__) # params : population_size, numAssets, ga_type
+        self.list_meilleures_fitness = []
 
-    def run(self, T_train, T_valid, T_test, param_mult):
+    def run(self, T_train, T_valid, T_test):
         
         for i in tqdm(range(self.numCycles)):
             if i > 0 :
                 self.Genetics.get_population()
     
             for j in range(len(self.Genetics.genes)):
-
-                scores = self.evaluateur.evaluation(self.Genetics.genes[j], T_train, param_mult)
+                scores = self.evaluateur.evaluation(self.Genetics.genes[j].chromosome, T_train)
 
                 self.Genetics.genes[j].fitness = scores[0]
                 self.Genetics.genes[j].portfolioreturns = scores[1]
                 self.Genetics.genes[j].weights = scores[2]
                 self.Genetics.genes[j].assets = scores[3]
 
+                self.list_meilleures_fitness.append(scores[0])
 
         
         for k in range(len(self.Genetics.genes)):
-            scores = self.evaluateur.evaluation(self.Genetics.genes[k], T_valid, param_mult)
+            scores = self.evaluateur.evaluation(self.Genetics.genes[k].chromosome, T_valid)
             self.Genetics.genes[k].validation_fitness = scores[0]
             self.Genetics.genes[k].validation_portfolioreturns = scores[1]
 
-            scores = self.evaluateur.evaluation(self.Genetics.genes[k], T_test, param_mult)
+            scores = self.evaluateur.evaluation(self.Genetics.genes[k].chromosome, T_test)
             self.Genetics.genes[k].test_fitness = scores[0]
             self.Genetics.genes[k].test_portfolioreturns = scores[1]
 
@@ -186,7 +185,7 @@ class GeneticAlgorithm:
         shares = [0 for i in range(len(best.assets))]
 
         for k in range(len(shares)):
-            shares[k] = self.stocks_name[int(best.assets[k])]
+            shares[k] = self.stocks[int(best.assets[k])].epic
 
         return [shares, best.weights, r]
     
@@ -217,10 +216,6 @@ if __name__ == "__main__":
     stocks = stocks.copy().loc[:,['date','symbol','Adj Close']]
     stocks = stocks.pivot(index='date', columns='symbol', values='Adj Close')
 
-
-    # stocks_name = stocks.columns.values
-    # stocks = stocks[stocks_name].copy()
-
     stocks.dropna(axis=1, thresh=0.8*len(stocks), inplace=True)
     stocks.dropna(inplace = True)
 
@@ -229,7 +224,7 @@ if __name__ == "__main__":
     index = pd.DataFrame()
     to_date = datetime.today().date()
     from_date = to_date - relativedelta(years=10)
-    index = wb.get_data_yahoo("^FTSE",start=from_date, end=to_date, interval='1d')
+    index = wb.get_data_yahoo("^GSPC",start=from_date, end=to_date, interval='1d')
 
     # index['return'] = np.log(index['Close']) - np.log(index['Close'].shift())
     index['Adj Close'] = index['Close']
@@ -238,9 +233,7 @@ if __name__ == "__main__":
 
     # rename the column
     data.columns = ['FTSE']
-
     stocks['FTSE'] = data['FTSE']
-
     stocks.dropna(inplace = True)
 
     
@@ -251,26 +244,38 @@ if __name__ == "__main__":
 
     stocks_name = stocks.columns.values
 
+    list_stocks = {}
+    for i in range(len(stocks_name)):
+        stock = Stock(stocks_name[i], stocks[stocks_name[i]])
+        list_stocks[i] = stock
 
+    index = Stock('FTSE', data['FTSE'])
 
     # we define the parameters
-    numCycles = 100
-    population_size = 20
-    genetic_params = [0.8, 0.075,0.5, 4] # prob_crossover, prob_mutation, replacement_rate, tournament_size
-    tracker_params = [80, 0.01, 30, 0.01, 1] # taille_portefeuille, min_weight, periode, cout_transaction, lmbda
+    numCycles = 10
+    population_size = 10
+    genetic_params = [0.95, 0.075,0.5, 2] # prob_crossover, prob_mutation, replacement_rate, tournament_size
+    tracker_params = [len(stocks_name), 0.0, 10, 0.01] # taille_portefeuille, min_weight, periode, cout_transaction
 
     # we create the genetic algorithm
-    param_mult = 100
-    ga = GeneticAlgorithm(numCycles, population_size, stocks_name, stocks, index_returns, genetic_params, tracker_params, param_mult)
+
+
+
+    ga = GeneticAlgorithm(numCycles, population_size, list_stocks, index, genetic_params, tracker_params)
 
     # we run the genetic algorithm
     Nb_days = len(index_returns)
-    T_train = [1, int(Nb_days * 0.8)]
-    T_valid = [int(Nb_days * 0.8), int(Nb_days * 0.9)]
-    T_test = [int(Nb_days * 0.9), Nb_days]
+    T_train = [1, int(Nb_days * 0.7)]
+    T_valid = [int(Nb_days * 0.7), int(Nb_days * 0.85)]
+    T_test = [int(Nb_days * 0.85), Nb_days]
 
 
-    ga.run(T_train, T_valid, T_test, param_mult) # T_train, T_valid, T_test
+    ga.run(T_train, T_valid, T_test) # T_train, T_valid, T_test
+
+    liste_fitness = ga.list_meilleures_fitness
+
+    plt.plot(liste_fitness)
+    plt.show()
 
     # we get the best portfolio
     best_portfolio = ga.best_portfolio()
@@ -306,6 +311,17 @@ if __name__ == "__main__":
 
     plt.plot(nreturns, label = "portfolio")
     plt.plot(nindex, label = "index")
+
+   # plot a vertical line at the end of the training period
+    plt.axvline(x = T_train[1], color = 'r', linestyle = '--')
+
+    # plot a vertical line at the end of the validation period
+    plt.axvline(x = T_valid[1], color = 'g', linestyle = '--')
+
+    # plot a vertical line at the end of the test period
+    plt.axvline(x = T_test[1], color = 'b', linestyle = '--')
+
+
 
     plt.legend()
     plt.show()
