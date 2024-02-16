@@ -8,7 +8,7 @@
             "name": "Débogueur Python : /home/tarek/optimisation-patrimoine/OptimizationEngine/genetical_attempt/genetic_a.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "/home/tarek/optimisation-patrimoine/OptimizationEngine/genetical_attempt/genetic_a.py",
+            "program": "/home/tarek/optimisation-patrimoine/OptimizationEngine/genetical_attempt/genetic_algorithm.py",
             "console": "integratedTerminal"
         }
     ]

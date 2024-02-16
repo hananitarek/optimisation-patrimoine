@@ -132,7 +132,7 @@ class IndexTracker:
         truetracking_error = np.sqrt(np.sum(np.power(tracking_error[evaluation_range[0]:evaluation_range[1]],2))/(evaluation_range[1]-evaluation_range[0]))
         # fit = self.lmbda * truetracking_error + (1 - self.lmbda) * er
         
-        fit =  truetracking_error
+        fit =  truetracking_error / np.sqrt(252)
         # fit = 0
         # fit =  self.lmbda * sharp_ratio
 

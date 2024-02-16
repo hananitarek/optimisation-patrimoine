@@ -81,8 +81,6 @@ class Genetics:
             self.unfitted_genes.remove(self.unfitted_genes[best])
 
 
-
-    
     def mutate(self):
         for i in self.genes:
             if i.to_replace:
@@ -232,15 +230,15 @@ if __name__ == "__main__":
     data = index[['Adj Close']].copy()
 
     # rename the column
-    data.columns = ['FTSE']
-    stocks['FTSE'] = data['FTSE']
+    data.columns = ['^GSPC']
+    stocks['^GSPC'] = data['^GSPC']
     stocks.dropna(inplace = True)
 
     
-    index_returns = stocks['FTSE'].values
+    index_returns = stocks['^GSPC'].values
 
-    # retirer la colonne FTSE du dataframe stocks
-    stocks.drop(columns = ['FTSE'], inplace = True)
+    # retirer la colonne ^GSPC du dataframe stocks
+    stocks.drop(columns = ['^GSPC'], inplace = True)
 
     stocks_name = stocks.columns.values
 
@@ -249,13 +247,13 @@ if __name__ == "__main__":
         stock = Stock(stocks_name[i], stocks[stocks_name[i]])
         list_stocks[i] = stock
 
-    index = Stock('FTSE', data['FTSE'])
+    index = Stock('^GSPC', data['^GSPC'])
 
     # we define the parameters
-    numCycles = 10
-    population_size = 10
+    numCycles = 50
+    population_size = 30
     genetic_params = [0.95, 0.075,0.5, 2] # prob_crossover, prob_mutation, replacement_rate, tournament_size
-    tracker_params = [len(stocks_name), 0.0, 10, 0.01] # taille_portefeuille, min_weight, periode, cout_transaction
+    tracker_params = [50, 0.0, 1, 0.01] # taille_portefeuille, min_weight, periode, cout_transaction
 
     # we create the genetic algorithm
 
@@ -325,6 +323,3 @@ if __name__ == "__main__":
 
     plt.legend()
     plt.show()
-
-
-   
